@@ -109,7 +109,7 @@ function updateCartCount(){
   const btn = document.getElementById('cartIconBtn');
   if (!badge || !btn) return;
   if (cart.length > 0){
-    badge.textContent = cart.length;
+    badge.textContent = String(cart.length);
     badge.classList.remove('hidden');
   } else {
     badge.classList.add('hidden');
