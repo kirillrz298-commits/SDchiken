@@ -263,8 +263,8 @@ function renderCheckout(total){
     if (!notice) return;
     const nameInput = document.getElementById('checkoutName');
     const phoneInput = document.getElementById('checkoutPhone');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const phone = phoneInput ? phoneInput.value.trim() : '';
+    const name = (nameInput instanceof HTMLInputElement) ? nameInput.value.trim() : '';
+    const phone = (phoneInput instanceof HTMLInputElement) ? phoneInput.value.trim() : '';
     if (!name || !phone) {
       notice.style.color = '#ff3300';
       notice.textContent = 'Пожалуйста, заполните имя и номер телефона для оформления заказа.';
@@ -609,12 +609,14 @@ document.addEventListener('DOMContentLoaded', () => {
     loadReviews();
     form.addEventListener('submit', e => {
       e.preventDefault();
-      const name = document.getElementById('reviewName').value.trim();
-      const text = document.getElementById('reviewText').value.trim();
+      const nameInput = document.getElementById('reviewName');
+      const textInput = document.getElementById('reviewText');
+      const name = (nameInput instanceof HTMLInputElement || nameInput instanceof HTMLTextAreaElement) ? nameInput.value.trim() : '';
+      const text = (textInput instanceof HTMLInputElement || textInput instanceof HTMLTextAreaElement) ? textInput.value.trim() : '';
       if (!name || !text) return;
       saveReview({name, text});
-      document.getElementById('reviewName').value = '';
-      document.getElementById('reviewText').value = '';
+      if (nameInput instanceof HTMLInputElement || nameInput instanceof HTMLTextAreaElement) nameInput.value = '';
+      if (textInput instanceof HTMLInputElement || textInput instanceof HTMLTextAreaElement) textInput.value = '';
       loadReviews();
     });
   }
@@ -648,12 +650,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Smooth scroll for anchor links
   document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', e => {
-      e.preventDefault();
-      const id = a.getAttribute('href').slice(1);
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({behavior:'smooth'});
-      else window.location.href = a.href;
-    });
+    if (a instanceof HTMLAnchorElement) {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const href = a.getAttribute('href');
+        const id = href ? href.slice(1) : '';
+        const el = id ? document.getElementById(id) : null;
+        if (el) el.scrollIntoView({behavior:'smooth'});
+        else window.location.href = a.href;
+      });
+    }
   });
 });
