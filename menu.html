@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Меню — SD Chicken</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-left">
+      <img class="logo" src="photo_5260364052112808471_y.jpg" alt="SD Chicken logo">
+      <div class="brand">SD Chicken</div>
+    </div>
+    <nav class="nav">
+      <a href="index.html">Вернуться на главную</a>
+    </nav>
+    <button id="cartIconBtn" class="cart-icon-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="9" cy="21" r="1"></circle>
+        <circle cx="20" cy="21" r="1"></circle>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+      </svg>
+      <span id="cartCount" class="cart-count-badge hidden">0</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="menu-section">
+      <h1>Меню</h1>
+      <div id="menuContainer"></div>
+    </section>
+
+    <section class="menu-cta">
+      <h2>Заказать прямо сейчас</h2>
+      <p>Телефон: +7 708 378 2484</p>
+      <div class="contact-actions">
+        <a class="btn btn-phone" href="tel:+77083782484">Позвонить сейчас</a>
+        <a class="btn btn-whatsapp" href="https://wa.me/77083782484" target="_blank">WhatsApp</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>SD Chicken © 2026</div>
+  </footer>
+
+  <div id="cartModal" class="cart-modal hidden">
+    <div class="cart-modal-overlay" id="cartModalOverlay"></div>
+    <div class="cart-modal-panel">
+      <div class="cart-modal-header">
+        <div class="cart-modal-header-left">
+          <button id="cartBackBtn" class="btn btn-phone">Вернуться к меню</button>
+          <h2>Корзина</h2>
+        </div>
+        <button id="cartCloseBtn" class="cart-close-btn">✕</button>
+      </div>
+      <div class="cart-modal-body">
+        <div id="cartContent" class="cart-modal-content"></div>
+        <div id="cartCheckout" class="cart-checkout hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

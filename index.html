@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SD Chicken</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-left">
+      <img class="logo" src="photo_5260364052112808471_y.jpg" alt="SD Chicken logo">
+      <div class="brand">SD Chicken</div>
+    </div>
+    <nav class="nav">
+      <a href="menu.html">Меню</a>
+      <a href="#order">Заказать</a>
+      <a href="#reviews">Отзывы</a>
+    </nav>
+    <div class="phone">+7 708 378 2484</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <h1>SD Chicken</h1>
+        <p class="lead">Свежая и горячая курочка каждый день</p>
+        <p>Самая вкусная курочка, бургеры, комбо и закуски для всей семьи.</p>
+        <a class="btn btn-primary" href="menu.html">Посмотреть меню</a>
+      </div>
+      <div class="hero-illustration"></div>
+    </section>
+
+    <section class="advantages">
+      <h2>Наши преимущества</h2>
+      <div class="cards">
+        <div class="card">🔥<span>Всегда свежие продукты</span></div>
+        <div class="card">🚀<span>Быстрое обслуживание</span></div>
+        <div class="card">🍗<span>Большой выбор блюд</span></div>
+        <div class="card">💰<span>Доступные цены</span></div>
+        <div class="card">⭐<span>Высокое качество</span></div>
+      </div>
+    </section>
+
+    <section class="promos">
+      <h2>🎉 Специальные акции</h2>
+      <div class="promos-grid">
+        <div class="promo-card">
+          <div class="promo-badge">-10%</div>
+          <h3>Первый заказ</h3>
+          <p>Скидка 10% на первый заказ для новых клиентов</p>
+          <a class="btn btn-primary" href="menu.html">Заказать сейчас</a>
+        </div>
+        <div class="promo-card">
+          <div class="promo-badge">Бонусы</div>
+          <h3>Программа лояльности</h3>
+          <p>Накапливайте бонусы и обменивайте на скидки</p>
+          <a class="btn btn-primary" href="#order">Узнать больше</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="popular-dishes">
+      <h2>⭐ Популярные блюда</h2>
+      <div class="dishes-grid">
+        <div class="dish-card">
+          <div class="dish-icon">🍔</div>
+          <h3>SD Бургер</h3>
+          <p>Хрустящая курица, помидор, огурец, чеддер</p>
+          <div class="dish-price">2 190 ₸</div>
+        </div>
+        <div class="dish-card">
+          <div class="dish-icon">🌯</div>
+          <h3>Донер</h3>
+          <p>Сочная курица со свежими овощами</p>
+          <div class="dish-price">1 890 ₸</div>
+        </div>
+        <div class="dish-card">
+          <div class="dish-icon">🍗</div>
+          <h3>Крылышки острые</h3>
+          <p>Хрустящие крылья с фирменным соусом</p>
+          <div class="dish-price">2 190 ₸</div>
+        </div>
+        <div class="dish-card">
+          <div class="dish-icon">🍟</div>
+          <h3>Сет Friends</h3>
+          <p>4 бургера, крылья, фри, соусы, кола</p>
+          <div class="dish-price">10 990 ₸</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq">
+      <h2>❓ Часто задаваемые вопросы</h2>
+      <div class="faq-list">
+        <div class="faq-item">
+          <button class="faq-question">📦 Есть ли доставка?</button>
+          <div class="faq-answer hidden">
+            <p>Да, мы осуществляем доставку по городу Астана. Время доставки обычно 30-45 минут. Минимальная сумма заказа - 2000 ₸.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">💳 Какие методы оплаты доступны?</button>
+          <div class="faq-answer hidden">
+            <p>Мы принимаем оплату наличными, картой и мобильным переводом (Kaspi, Halyk). Также можно предоплатить по переводу заранее.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">⏰ Можно ли заказать заранее?</button>
+          <div class="faq-answer hidden">
+            <p>Конечно! Вы можете забронировать заказ на нужное вам время. Просто укажите время при оформлении или позвоните нам по телефону +7 708 378 2484.</p>
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">🍗 Как долго готовится заказ?</button>
+          <div class="faq-answer hidden">
+            <p>Обычно заказ готовится 15-20 минут. Для больших заказов может потребоваться больше времени. Вы можете уточнить время в нашем меню.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reviews" class="reviews">
+      <h2>Отзывы наших клиентов</h2>
+      <div class="reviews-list" id="reviewsList"></div>
+
+      <form id="reviewForm" class="review-form">
+        <input id="reviewName" placeholder="Имя" required>
+        <textarea id="reviewText" placeholder="Текст отзыва" required></textarea>
+        <button class="btn" type="submit">Оставить отзыв</button>
+      </form>
+    </section>
+
+    <section id="order" class="contacts">
+      <h2>Наши контакты</h2>
+      <p>г. Астана<br>ул. Шаймердена Косшыгұлұлы 13/5</p>
+      <p>Телефон: +7 708 378 2484</p>
+      <p>Время работы: Ежедневно 10:00 - 23:00</p>
+
+      <div class="contact-actions">
+        <a class="btn btn-phone" href="tel:+77083782484">Позвонить</a>
+        <a class="btn btn-whatsapp" href="https://wa.me/77083782484" target="_blank">WhatsApp</a>
+        <a class="btn btn-instagram" href="https://www.instagram.com/sdchicken.kz_?igsh=bnc3andmZ3NpNW9u" target="_blank">Instagram</a>
+      </div>
+
+      <div class="map-wrap">
+        <iframe
+          src="https://www.google.com/maps?q=г. Астана ул. Шаймердена Косшыгұлұлы 13/5&output=embed"
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>SD Chicken © 2026</div>
+    <div>ул. Шаймердена Косшыгұлұлы 13/5</div>
+    <div>Тел: +7 708 378 2484</div>
+    <div>Время работы: 10:00 - 23:00</div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
