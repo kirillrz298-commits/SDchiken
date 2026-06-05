@@ -26,7 +26,7 @@ const menuImageMap = {
   'Стрипсы острые — 9 шт': 'menu1/strips.png'
 };
 
-window.menuSections = [
+const menuSections = [
   {
     category: 'Бургеры',
     items: [
@@ -80,7 +80,7 @@ window.menuSections = [
   }
 ];
 
-window.cart = [];
+let cart = [];
 
 function getCartStorageKey(){
   return 'sd_cart_v1';
@@ -89,17 +89,17 @@ function getCartStorageKey(){
 function loadCart(){
   try {
     const raw = localStorage.getItem(getCartStorageKey());
-    window.cart = raw ? JSON.parse(raw) : [];
+    cart = raw ? JSON.parse(raw) : [];
   } catch {
-    window.cart = [];
+    cart = [];
   }
 }
 
 function saveCart(){
-  localStorage.setItem(getCartStorageKey(), JSON.stringify(window.cart));
+  localStorage.setItem(getCartStorageKey(), JSON.stringify(cart));
 }
 
-window.checkout = {
+let checkout = {
   payment: 'cash',
   useBonus: false
 };
@@ -108,8 +108,8 @@ function updateCartCount(){
   const badge = document.getElementById('cartCount');
   const btn = document.getElementById('cartIconBtn');
   if (!badge || !btn) return;
-  if (window.cart.length > 0){
-    badge.textContent = window.cart.length;
+  if (cart.length > 0){
+    badge.textContent = cart.length;
     badge.classList.remove('hidden');
   } else {
     badge.classList.add('hidden');
@@ -161,7 +161,7 @@ function renderCheckout(total){
   const checkout = document.getElementById('cartCheckout');
   if (!checkout) return;
   checkout.innerHTML = '';
-  if (!window.cart.length){
+  if (!cart.length){
     checkout.classList.add('hidden');
     return;
   }
@@ -200,9 +200,9 @@ function renderCheckout(total){
     radio.type = 'radio';
     radio.name = 'checkoutPayment';
     radio.value = value;
-    radio.checked = window.checkout.payment === value;
+    radio.checked = checkout.payment === value;
     radio.addEventListener('change', () => {
-      window.checkout.payment = value;
+      checkout.payment = value;
       renderCheckout(total);
     });
     option.appendChild(radio);
@@ -212,7 +212,7 @@ function renderCheckout(total){
   checkout.appendChild(paymentGroup);
 
   const cardFields = document.createElement('div');
-  cardFields.className = window.checkout.payment === 'card' ? 'checkout-card-fields' : 'checkout-card-fields hidden';
+  cardFields.className = checkout.payment === 'card' ? 'checkout-card-fields' : 'checkout-card-fields hidden';
   cardFields.appendChild(createCheckoutInput({labelText: 'Номер карты', id: 'checkoutCardNumber', placeholder: '0000 0000 0000 0000'}));
   cardFields.appendChild(createCheckoutInput({labelText: 'Срок действия', id: 'checkoutCardExpiry', placeholder: 'MM/YY'}));
   cardFields.appendChild(createCheckoutInput({labelText: 'CVC/CVV', id: 'checkoutCardCvc', placeholder: '000'}));
@@ -239,14 +239,14 @@ function renderCheckout(total){
   bonusOption.className = 'checkout-bonus-label';
   const bonusCheckbox = document.createElement('input');
   bonusCheckbox.type = 'checkbox';
-  bonusCheckbox.checked = window.checkout.useBonus;
+  bonusCheckbox.checked = checkout.useBonus;
   bonusCheckbox.addEventListener('change', () => {
-    window.checkout.useBonus = bonusCheckbox.checked;
+    checkout.useBonus = bonusCheckbox.checked;
     bonusStatus.textContent = bonusCheckbox.checked ? 'Бонусы будут списаны' : 'Бонусы не списываются';
   });
   const bonusStatus = document.createElement('span');
   bonusStatus.className = 'checkout-bonus-status';
-  bonusStatus.textContent = window.checkout.useBonus ? 'Бонусы будут списаны' : 'Бонусы не списываются';
+  bonusStatus.textContent = checkout.useBonus ? 'Бонусы будут списаны' : 'Бонусы не списываются';
   bonusOption.appendChild(bonusCheckbox);
   bonusOption.appendChild(document.createTextNode(' Списать бонусы'));
   bonusRow.appendChild(bonusInfo);
@@ -273,7 +273,7 @@ function renderCheckout(total){
     notice.style.color = 'var(--yellow)';
     notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Наш оператор свяжется с вами по телефону <strong>${escapeHtml(phone)}</strong> в течение 5 минут.`;
     setTimeout(() => {
-      window.cart = [];
+      cart = [];
       saveCart();
       updateCartCount();
       renderCart();
@@ -301,11 +301,11 @@ function getPriceValue(price){
 function addToCart(item){
   // support variant (e.g., 'spicy' or 'normal') to distinguish items like wings
   const variant = item.variant || 'default';
-  const exists = window.cart.find(cartItem => cartItem.title === item.title && (cartItem.variant || 'default') === variant);
+  const exists = cart.find(cartItem => cartItem.title === item.title && (cartItem.variant || 'default') === variant);
   if (exists){
     exists.qty += 1;
   } else {
-    window.cart.push({
+    cart.push({
       title: item.title,
       desc: item.desc,
       price: item.price,
@@ -322,11 +322,11 @@ function addToCart(item){
 }
 
 function changeCartQty(title, delta, variant = 'default'){
-  const item = window.cart.find(cartItem => cartItem.title === title && (cartItem.variant || 'default') === variant);
+  const item = cart.find(cartItem => cartItem.title === title && (cartItem.variant || 'default') === variant);
   if (!item) return;
   item.qty += delta;
   if (item.qty <= 0){
-    window.cart = window.cart.filter(cartItem => !(cartItem.title === title && (cartItem.variant || 'default') === variant));
+    cart = cart.filter(cartItem => !(cartItem.title === title && (cartItem.variant || 'default') === variant));
   }
   saveCart();
   updateCartCount();
@@ -338,7 +338,7 @@ function changeCartQty(title, delta, variant = 'default'){
 function renderCart(){
   const cartContent = document.getElementById('cartContent');
   if (!cartContent) return;
-  if (!window.cart.length){
+  if (!cart.length){
     cartContent.innerHTML = '';
     return;
   }
@@ -346,7 +346,7 @@ function renderCart(){
   const list = document.createElement('div');
   list.className = 'cart-list';
   let total = 0;
-  window.cart.forEach(item => {
+  cart.forEach(item => {
     const cartItem = document.createElement('div');
     cartItem.className = 'cart-item';
     const left = document.createElement('div');
@@ -402,9 +402,9 @@ function renderCart(){
 
 function renderMenuSections(){
   const container = document.getElementById('menuContainer');
-  if (!container || !window.menuSections) return;
+  if (!container || !menuSections) return;
   container.innerHTML = '';
-  window.menuSections.forEach(section => {
+  menuSections.forEach(section => {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'menu-category';
     if (section.category === 'Новинки') sectionEl.classList.add('menu-category--new');
@@ -490,13 +490,13 @@ function renderMenuSections(){
 
         minus.addEventListener('click', () => {
           changeCartQty(item.title, -1, selectedVariant);
-          const it = window.cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
+          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
           if (it) createQtyControls(it.qty);
           else renderActionByVariant();
         });
         plus.addEventListener('click', () => {
           addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
-          const it = window.cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
+          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
           createQtyControls(it.qty);
         });
 
@@ -514,7 +514,7 @@ function renderMenuSections(){
         action.textContent = 'Выбрать';
         action.addEventListener('click', () => {
           addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
-          const it = window.cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
+          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
           createQtyControls(it.qty);
         });
         if (isWings) actionArea.appendChild(variantSelector);
@@ -523,12 +523,12 @@ function renderMenuSections(){
 
       function renderActionByVariant(){
         if (!isWings){
-          const existing = window.cart.find(c => c.title === item.title);
+          const existing = cart.find(c => c.title === item.title);
           if (existing && existing.qty > 0) createQtyControls(existing.qty);
           else createChooseButton();
           return;
         }
-        const existing = window.cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
+        const existing = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
         if (existing && existing.qty > 0) createQtyControls(existing.qty);
         else createChooseButton();
       }
