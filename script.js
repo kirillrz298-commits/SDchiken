@@ -158,25 +158,25 @@ function createCheckoutInput({labelText, id, placeholder, type = 'text'}){
 }
 
 function renderCheckout(total){
-  const checkout = document.getElementById('cartCheckout');
-  if (!checkout) return;
-  checkout.innerHTML = '';
+  const checkoutEl = document.getElementById('cartCheckout');
+  if (!checkoutEl) return;
+  checkoutEl.innerHTML = '';
   if (!cart.length){
-    checkout.classList.add('hidden');
+    checkoutEl.classList.add('hidden');
     return;
   }
-  checkout.classList.remove('hidden');
+  checkoutEl.classList.remove('hidden');
 
   const title = document.createElement('h3');
   title.className = 'checkout-title';
   title.textContent = 'Оформление заказа';
-  checkout.appendChild(title);
+  checkoutEl.appendChild(title);
 
   const contactGroup = document.createElement('div');
   contactGroup.className = 'checkout-group';
   contactGroup.appendChild(createCheckoutInput({labelText: 'Ваше имя', id: 'checkoutName', placeholder: 'Иван Петров'}));
   contactGroup.appendChild(createCheckoutInput({labelText: 'Номер телефона', id: 'checkoutPhone', placeholder: '+7 708 378 2484', type: 'tel'}));
-  checkout.appendChild(contactGroup);
+  checkoutEl.appendChild(contactGroup);
 
   const addressGroup = document.createElement('div');
   addressGroup.className = 'checkout-group';
@@ -184,7 +184,7 @@ function renderCheckout(total){
   addressGroup.appendChild(createCheckoutInput({labelText: 'Дом', id: 'checkoutHouse', placeholder: '12'}));
   addressGroup.appendChild(createCheckoutInput({labelText: 'Этаж', id: 'checkoutFloor', placeholder: '3'}));
   addressGroup.appendChild(createCheckoutInput({labelText: 'Квартира', id: 'checkoutApartment', placeholder: '45'}));
-  checkout.appendChild(addressGroup);
+  checkoutEl.appendChild(addressGroup);
 
   const paymentGroup = document.createElement('div');
   paymentGroup.className = 'checkout-group';
@@ -209,14 +209,14 @@ function renderCheckout(total){
     option.appendChild(document.createTextNode(value === 'cash' ? 'Наличными' : 'Картой'));
     paymentGroup.appendChild(option);
   });
-  checkout.appendChild(paymentGroup);
+  checkoutEl.appendChild(paymentGroup);
 
   const cardFields = document.createElement('div');
   cardFields.className = checkout.payment === 'card' ? 'checkout-card-fields' : 'checkout-card-fields hidden';
   cardFields.appendChild(createCheckoutInput({labelText: 'Номер карты', id: 'checkoutCardNumber', placeholder: '0000 0000 0000 0000'}));
   cardFields.appendChild(createCheckoutInput({labelText: 'Срок действия', id: 'checkoutCardExpiry', placeholder: 'MM/YY'}));
   cardFields.appendChild(createCheckoutInput({labelText: 'CVC/CVV', id: 'checkoutCardCvc', placeholder: '000'}));
-  checkout.appendChild(cardFields);
+  checkoutEl.appendChild(cardFields);
 
   const commentField = document.createElement('div');
   commentField.className = 'checkout-field';
@@ -229,7 +229,7 @@ function renderCheckout(total){
   commentTextarea.className = 'checkout-textarea';
   commentField.appendChild(commentLabel);
   commentField.appendChild(commentTextarea);
-  checkout.appendChild(commentField);
+  checkoutEl.appendChild(commentField);
 
   const bonusRow = document.createElement('div');
   bonusRow.className = 'checkout-bonus-row';
@@ -252,7 +252,7 @@ function renderCheckout(total){
   bonusRow.appendChild(bonusInfo);
   bonusRow.appendChild(bonusOption);
   bonusRow.appendChild(bonusStatus);
-  checkout.appendChild(bonusRow);
+  checkoutEl.appendChild(bonusRow);
 
   const orderButton = document.createElement('button');
   orderButton.type = 'button';
@@ -280,17 +280,17 @@ function renderCheckout(total){
       renderMenuSections();
     }, 4000);
   });
-  checkout.appendChild(orderButton);
+  checkoutEl.appendChild(orderButton);
 
   const totalRow = document.createElement('div');
   totalRow.className = 'checkout-total-row';
   totalRow.textContent = `Итоговая сумма заказа: ${total.toLocaleString('ru-RU')} ₸`;
-  checkout.appendChild(totalRow);
+  checkoutEl.appendChild(totalRow);
 
   const notice = document.createElement('div');
   notice.id = 'checkoutNotice';
   notice.className = 'checkout-note';
-  checkout.appendChild(notice);
+  checkoutEl.appendChild(notice);
 }
 
 function getPriceValue(price){
