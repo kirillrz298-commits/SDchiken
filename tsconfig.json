@@ -6,11 +6,9 @@
     "checkJs": true,
     "strict": false,
     "noEmit": true,
-    "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "ignoreDeprecations": "6.0",
     "types": ["node"]
   },
   "exclude": [
