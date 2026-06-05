@@ -440,7 +440,7 @@ function renderMenuSections(){
       let displayTitle = item.title;
       const isWings = /крылышки/i.test(item.title);
       if (isWings){
-        displayTitle = item.title.replace(/острые?/i,'').trim() + ' — Острые/Не острые';
+        displayTitle = item.title.replace(/острые?\s*/i,'').trim() + ' — Острые/Не острые';
       }
       title.textContent = displayTitle;
       const desc = document.createElement('p');
@@ -454,7 +454,7 @@ function renderMenuSections(){
       actionArea.className = 'menu-card-action';
 
       // Variant selector for wings
-      let selectedVariant = 'spicy';
+      let selectedVariant = isWings ? 'spicy' : 'default';
       const variantSelector = document.createElement('div');
       variantSelector.className = 'variant-selector';
       function renderVariantButtons(){
@@ -551,8 +551,13 @@ function renderMenuSections(){
 
 function loadReviews(){
   const key = 'sd_reviews_v1';
-  const raw = localStorage.getItem(key);
-  let reviews = raw ? JSON.parse(raw) : [];
+  let reviews = [];
+  try {
+    const raw = localStorage.getItem(key);
+    reviews = raw ? JSON.parse(raw) : [];
+  } catch {
+    reviews = [];
+  }
   const list = document.getElementById('reviewsList');
   if (!list) return;
   list.innerHTML = '';
@@ -566,10 +571,19 @@ function loadReviews(){
 
 function saveReview(review){
   const key = 'sd_reviews_v1';
-  const raw = localStorage.getItem(key);
-  let reviews = raw ? JSON.parse(raw) : [];
+  let reviews = [];
+  try {
+    const raw = localStorage.getItem(key);
+    reviews = raw ? JSON.parse(raw) : [];
+  } catch {
+    reviews = [];
+  }
   reviews.unshift(review);
-  localStorage.setItem(key, JSON.stringify(reviews));
+  try {
+    localStorage.setItem(key, JSON.stringify(reviews));
+  } catch (e) {
+    console.error('Failed to save review', e);
+  }
 }
 
 function escapeHtml(s){return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);}
