@@ -186,43 +186,17 @@ function renderCheckout(total){
   addressGroup.appendChild(createCheckoutInput({labelText: 'Квартира', id: 'checkoutApartment', placeholder: '45'}));
   checkoutEl.appendChild(addressGroup);
 
-  const paymentGroup = document.createElement('div');
-  paymentGroup.className = 'checkout-group';
-  const paymentLabel = document.createElement('div');
-  paymentLabel.className = 'checkout-label';
-  paymentLabel.textContent = 'Способ оплаты';
-  paymentGroup.appendChild(paymentLabel);
-
-  ['cash', 'card'].forEach(value => {
-    const option = document.createElement('label');
-    option.className = 'checkout-radio-label';
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'checkoutPayment';
-    radio.value = value;
-    radio.checked = checkout.payment === value;
-    radio.addEventListener('change', () => {
-      checkout.payment = value;
-      renderCheckout(total);
-    });
-    option.appendChild(radio);
-    option.appendChild(document.createTextNode(value === 'cash' ? 'Наличными' : 'Картой'));
-    paymentGroup.appendChild(option);
-  });
-  checkoutEl.appendChild(paymentGroup);
-
-  const cardFields = document.createElement('div');
-  cardFields.className = checkout.payment === 'card' ? 'checkout-card-fields' : 'checkout-card-fields hidden';
-  cardFields.appendChild(createCheckoutInput({labelText: 'Номер карты', id: 'checkoutCardNumber', placeholder: '0000 0000 0000 0000'}));
-  cardFields.appendChild(createCheckoutInput({labelText: 'Срок действия', id: 'checkoutCardExpiry', placeholder: 'MM/YY'}));
-  cardFields.appendChild(createCheckoutInput({labelText: 'CVC/CVV', id: 'checkoutCardCvc', placeholder: '000'}));
-  checkoutEl.appendChild(cardFields);
+  const infoBox = document.createElement('div');
+  infoBox.className = 'checkout-info-box';
+  infoBox.textContent = 'При оформлении заказа в течение 2-3 минут вам позвонят для подтверждения заказа и способа оплаты.';
+  checkoutEl.appendChild(infoBox);
 
   const commentField = document.createElement('div');
   commentField.className = 'checkout-field';
   const commentLabel = document.createElement('label');
   commentLabel.setAttribute('for', 'checkoutComment');
   commentLabel.textContent = 'Комментарий к заказу (опционально)';
+
   const commentTextarea = document.createElement('textarea');
   commentTextarea.id = 'checkoutComment';
   commentTextarea.placeholder = 'Например: без майонеза, острое побольше...';
@@ -263,15 +237,88 @@ function renderCheckout(total){
     if (!notice) return;
     const nameInput = document.getElementById('checkoutName');
     const phoneInput = document.getElementById('checkoutPhone');
+    const streetInput = document.getElementById('checkoutStreet');
+    const houseInput = document.getElementById('checkoutHouse');
+    const floorInput = document.getElementById('checkoutFloor');
+    const apartmentInput = document.getElementById('checkoutApartment');
+    const commentInput = document.getElementById('checkoutComment');
+
     const name = (nameInput instanceof HTMLInputElement) ? nameInput.value.trim() : '';
     const phone = (phoneInput instanceof HTMLInputElement) ? phoneInput.value.trim() : '';
+    const street = (streetInput instanceof HTMLInputElement) ? streetInput.value.trim() : '';
+    const house = (houseInput instanceof HTMLInputElement) ? houseInput.value.trim() : '';
+    const floor = (floorInput instanceof HTMLInputElement) ? floorInput.value.trim() : '';
+    const apartment = (apartmentInput instanceof HTMLInputElement) ? apartmentInput.value.trim() : '';
+    const comment = (commentInput instanceof HTMLTextAreaElement || commentInput instanceof HTMLInputElement) ? commentInput.value.trim() : '';
+
     if (!name || !phone) {
       notice.style.color = '#ff3300';
       notice.textContent = 'Пожалуйста, заполните имя и номер телефона для оформления заказа.';
       return;
     }
+
+    // Format the items details for the message
+    let itemsText = '';
+    let totalQty = 0;
+    cart.forEach((item, index) => {
+      const hasSpicy = /крылышки|ножки|стрипсы/i.test(item.title);
+      let itemTitle = item.title;
+      let variantLabel = '';
+      if (hasSpicy && item.variant && item.variant !== 'default') {
+        itemTitle = item.title.replace(/острые?\s*/i, '').trim();
+        variantLabel = ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
+      } else if (item.variant && item.variant !== 'default') {
+        variantLabel = ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
+      }
+      itemsText += `${index + 1}. ${itemTitle}${variantLabel} x${item.qty} = ${item.price}\n`;
+      totalQty += item.qty;
+    });
+
+    const orderMsg = `🍗 *Новый заказ в SD Chicken* 🍗\n\n` +
+      `📞 *Номер заказчика:* ${phone}\n` +
+      `👤 *Имя:* ${name}\n` +
+      `📍 *Адрес:* ул. ${street}, д. ${house}${floor ? ', эт. ' + floor : ''}${apartment ? ', кв. ' + apartment : ''}\n\n` +
+      `📦 *Заказ:* \n${itemsText}\n` +
+      `🔢 *Количество блюд:* ${totalQty} шт.\n` +
+      `💰 *Сумма заказа:* ${total.toLocaleString('ru-RU')} ₸\n` +
+      (comment ? `💬 *Комментарий:* ${comment}` : '');
+
+    // 1. Redirection to WhatsApp for sending the order
+    const targetPhone = '77776984098';
+    const waUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(orderMsg)}`;
+    window.open(waUrl, '_blank');
+
+    // 2. Silent POST request to the local Express server
+    const addressString = `ул. ${street}, д. ${house}${floor ? ', эт. ' + floor : ''}${apartment ? ', кв. ' + apartment : ''}`;
+    fetch('/api/order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name,
+        phone,
+        address: addressString,
+        items: cart.map(item => {
+          const hasSpicy = /крылышки|ножки|стрипсы/i.test(item.title);
+          let itemTitle = item.title;
+          if (hasSpicy && item.variant && item.variant !== 'default') {
+            itemTitle = item.title.replace(/острые?\s*/i, '').trim() + ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
+          }
+          return {
+            title: itemTitle,
+            qty: item.qty,
+            price: item.price
+          };
+        }),
+        total,
+        comment
+      })
+    }).catch(err => console.error('Silent order sync failed:', err));
+
     notice.style.color = 'var(--yellow)';
     notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Наш оператор свяжется с вами по телефону <strong>${escapeHtml(phone)}</strong> в течение 5 минут.`;
+
     setTimeout(() => {
       cart = [];
       saveCart();
@@ -281,6 +328,7 @@ function renderCheckout(total){
     }, 4000);
   });
   checkoutEl.appendChild(orderButton);
+
 
   const totalRow = document.createElement('div');
   totalRow.className = 'checkout-total-row';
