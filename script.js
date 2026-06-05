@@ -260,7 +260,25 @@ function renderCheckout(total){
   orderButton.textContent = 'Оформить заказ';
   orderButton.addEventListener('click', () => {
     const notice = document.getElementById('checkoutNotice');
-    if (notice) notice.textContent = 'Кнопка демонстрационная; реальное оформление пока не выполняется.';
+    if (!notice) return;
+    const nameInput = document.getElementById('checkoutName');
+    const phoneInput = document.getElementById('checkoutPhone');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const phone = phoneInput ? phoneInput.value.trim() : '';
+    if (!name || !phone) {
+      notice.style.color = '#ff3300';
+      notice.textContent = 'Пожалуйста, заполните имя и номер телефона для оформления заказа.';
+      return;
+    }
+    notice.style.color = 'var(--yellow)';
+    notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Наш оператор свяжется с вами по телефону <strong>${escapeHtml(phone)}</strong> в течение 5 минут.`;
+    setTimeout(() => {
+      window.cart = [];
+      saveCart();
+      updateCartCount();
+      renderCart();
+      renderMenuSections();
+    }, 4000);
   });
   checkout.appendChild(orderButton);
 
