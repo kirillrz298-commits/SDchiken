@@ -353,8 +353,16 @@ function renderCart(){
     left.className = 'cart-item-info';
     const title = document.createElement('div');
     title.className = 'cart-item-title';
-    const variantLabel = (item.variant && item.variant !== 'default') ? ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})` : '';
-    title.textContent = item.title + variantLabel;
+    const hasSpicyOpt = /крылышки|ножки|стрипсы/i.test(item.title);
+    let displayTitle = item.title;
+    let variantLabel = '';
+    if (hasSpicyOpt && item.variant && item.variant !== 'default') {
+      displayTitle = item.title.replace(/острые?\s*/i, '').trim();
+      variantLabel = ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
+    } else if (item.variant && item.variant !== 'default') {
+      variantLabel = ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
+    }
+    title.textContent = displayTitle + variantLabel;
     const desc = document.createElement('div');
     desc.className = 'cart-item-desc';
     desc.textContent = item.desc;
@@ -436,10 +444,10 @@ function renderMenuSections(){
       content.className = 'menu-card-content';
       const title = document.createElement('h3');
       title.className = 'menu-card-title';
-      // For wings, display both options in title
+      // For wings, legs, and strips display both options in title
       let displayTitle = item.title;
-      const isWings = /крылышки/i.test(item.title);
-      if (isWings){
+      const hasSpicyOption = /крылышки|ножки|стрипсы/i.test(item.title);
+      if (hasSpicyOption){
         displayTitle = item.title.replace(/острые?\s*/i,'').trim() + ' — Острые/Не острые';
       }
       title.textContent = displayTitle;
@@ -453,8 +461,8 @@ function renderMenuSections(){
       const actionArea = document.createElement('div');
       actionArea.className = 'menu-card-action';
 
-      // Variant selector for wings
-      let selectedVariant = isWings ? 'spicy' : 'default';
+      // Variant selector for wings, legs, and strips
+      let selectedVariant = hasSpicyOption ? 'spicy' : 'default';
       const variantSelector = document.createElement('div');
       variantSelector.className = 'variant-selector';
       function renderVariantButtons(){
@@ -500,7 +508,7 @@ function renderMenuSections(){
           createQtyControls(it.qty);
         });
 
-        if (isWings) actionArea.appendChild(variantSelector);
+        if (hasSpicyOption) actionArea.appendChild(variantSelector);
         actionArea.appendChild(minus);
         actionArea.appendChild(count);
         actionArea.appendChild(plus);
@@ -517,12 +525,12 @@ function renderMenuSections(){
           const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
           createQtyControls(it.qty);
         });
-        if (isWings) actionArea.appendChild(variantSelector);
+        if (hasSpicyOption) actionArea.appendChild(variantSelector);
         actionArea.appendChild(action);
       }
 
       function renderActionByVariant(){
-        if (!isWings){
+        if (!hasSpicyOption){
           const existing = cart.find(c => c.title === item.title);
           if (existing && existing.qty > 0) createQtyControls(existing.qty);
           else createChooseButton();
@@ -533,7 +541,7 @@ function renderMenuSections(){
         else createChooseButton();
       }
 
-      if (isWings) renderVariantButtons();
+      if (hasSpicyOption) renderVariantButtons();
       renderActionByVariant();
 
       content.appendChild(title);
