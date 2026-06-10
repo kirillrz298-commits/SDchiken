@@ -1,0 +1,13 @@
+git init
+git add README.md
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/kirillrz298-commits/SDchiken.git
+git push -u origin main
+
+
+
+
+git add .
+git commit -m " мой текст " 
+git push origin main
