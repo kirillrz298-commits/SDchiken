@@ -81,7 +81,7 @@ function updateProfileHeaderBtn() {
     avatarDiv.style.width = '100%';
     avatarDiv.style.height = '100%';
     avatarDiv.style.borderRadius = '50%';
-    avatarDiv.style.background = 'var(--orange)';
+    avatarDiv.style.background = 'var(--primary-red)';
     avatarDiv.style.color = '#fff';
     avatarDiv.style.display = 'flex';
     avatarDiv.style.alignItems = 'center';
