@@ -1,8 +1,10 @@
 const express = require('express');
 const path = require('path');
 const https = require('https');
-const app = express();
+const { query } = require('./database');
+const { hashPassword, verifyPassword } = require('./auth');
 
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware to parse JSON bodies
@@ -11,14 +13,145 @@ app.use(express.json());
 // Serve static files from the root directory
 app.use(express.static(__dirname));
 
-// Fallback to index.html for single-page style navigation if needed
+// Fallback to index.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// POST endpoint for order notifications
-app.post('/api/order', (req, res) => {
-  const { name, phone, address, items, total, comment } = req.body;
+// GET /api/products - Get all products from SQLite DB
+app.get('/api/products', async (req, res) => {
+  try {
+    const products = await query.all("SELECT * FROM products ORDER BY category, id");
+    res.json(products);
+  } catch (err) {
+    console.error('Failed to get products:', err.message);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// POST /api/auth/register - Register new user
+app.post('/api/auth/register', async (req, res) => {
+  const { name, phone, email, password } = req.body;
+  if (!name || !phone || !email || !password) {
+    return res.status(400).json({ error: 'Все поля обязательны к заполнению' });
+  }
+
+  try {
+    // Check if phone or email already exists
+    const existing = await query.get(
+      "SELECT id FROM users WHERE phone = ? OR email = ?",
+      [phone, email]
+    );
+    if (existing) {
+      return res.status(400).json({ error: 'Пользователь с такой почтой или номером телефона уже зарегистрирован' });
+    }
+
+    // Hash the password securely using PBKDF2
+    const passHash = hashPassword(password);
+
+    // Insert user into DB
+    const result = await query.run(
+      "INSERT INTO users (name, phone, email, password_hash) VALUES (?, ?, ?, ?)",
+      [name, phone, email, passHash]
+    );
+
+    const newUser = {
+      id: result.id,
+      name,
+      phone,
+      email,
+      orders: []
+    };
+
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) {
+    console.error('Registration error:', err.message);
+    res.status(500).json({ error: 'Ошибка при регистрации' });
+  }
+});
+
+// POST /api/auth/login - Login user
+app.post('/api/auth/login', async (req, res) => {
+  const { loginVal, password } = req.body;
+  if (!loginVal || !password) {
+    return res.status(400).json({ error: 'Заполните все поля' });
+  }
+
+  try {
+    // Find user by phone or email
+    const user = await query.get(
+      "SELECT * FROM users WHERE email = ? OR phone = ?",
+      [loginVal, loginVal]
+    );
+    if (!user) {
+      return res.status(400).json({ error: 'Неверная почта/телефон или пароль' });
+    }
+
+    // Verify hashed password
+    const isMatch = verifyPassword(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Неверная почта/телефон или пароль' });
+    }
+
+    // Get order history for this user
+    const orders = await query.all(
+      "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC",
+      [user.id]
+    );
+    
+    // Attach order items for each order
+    for (const order of orders) {
+      order.items = await query.all(
+        "SELECT product_title AS title, qty, price, variant FROM order_items WHERE order_id = ?",
+        [order.id]
+      );
+    }
+
+    const userData = {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      orders: orders
+    };
+
+    res.json({ success: true, user: userData });
+  } catch (err) {
+    console.error('Login error:', err.message);
+    res.status(500).json({ error: 'Ошибка при входе в систему' });
+  }
+});
+
+// GET /api/user/orders - Get orders history for user
+app.get('/api/user/orders', async (req, res) => {
+  const userId = req.query.userId;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId parameter is required' });
+  }
+
+  try {
+    const orders = await query.all(
+      "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC",
+      [userId]
+    );
+
+    for (const order of orders) {
+      order.items = await query.all(
+        "SELECT product_title AS title, qty, price, variant FROM order_items WHERE order_id = ?",
+        [order.id]
+      );
+    }
+
+    res.json(orders);
+  } catch (err) {
+    console.error('Failed to get orders history:', err.message);
+    res.status(500).json({ error: 'Failed to fetch order history' });
+  }
+});
+
+// POST /api/order - Order notification & SQLite saving
+app.post('/api/order', async (req, res) => {
+  const { name, phone, address, items, total, comment, userId } = req.body;
   
   console.log('\n========================================');
   console.log(`🍗 НОВЫЙ ЗАКАЗ В SD CHICKEN 🍗`);
@@ -38,57 +171,116 @@ app.post('/api/order', (req, res) => {
   if (comment) {
     console.log(`💬 Комментарий: ${comment}`);
   }
+  if (userId) {
+    console.log(`👤 ID Пользователя: ${userId}`);
+  }
   console.log('========================================\n');
 
-  // Format Telegram notification if configured
-  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
-  const tgChatId = process.env.TELEGRAM_CHAT_ID;
-  if (tgToken && tgChatId) {
-    let tgItemsText = '';
+  try {
+    // 1. Insert order to SQLite DB
+    const dateStr = new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+    const orderResult = await query.run(
+      "INSERT INTO orders (user_id, date, total, address, comment) VALUES (?, ?, ?, ?, ?)",
+      [userId || null, dateStr, total, address, comment]
+    );
+
+    const orderId = orderResult.id;
+
+    // 2. Insert items
     if (Array.isArray(items)) {
-      items.forEach((item, idx) => {
-        tgItemsText += `${idx + 1}. ${item.title} x${item.qty} = ${item.price}\n`;
-      });
-    }
-    const message = `🍗 *Новый заказ в SD Chicken* 🍗\n\n` +
-      `📞 *Телефон:* ${phone}\n` +
-      `👤 *Имя:* ${name}\n` +
-      `📍 *Адрес:* ${address}\n\n` +
-      `📦 *Заказ:* \n${tgItemsText}\n` +
-      `🔢 *Количество:* ${totalItemsCount} шт.\n` +
-      `💰 *Сумма:* ${total ? total.toLocaleString('ru-RU') : '0'} ₸` +
-      (comment ? `\n💬 *Комментарий:* ${comment}` : '');
-
-    const data = JSON.stringify({
-      chat_id: tgChatId,
-      text: message,
-      parse_mode: 'Markdown'
-    });
-
-    const options = {
-      hostname: 'api.telegram.org',
-      port: 443,
-      path: `/bot${tgToken}/sendMessage`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data)
+      for (const item of items) {
+        // Parse variant from string or item parameter
+        const variant = item.variant || 'default';
+        await query.run(
+          "INSERT INTO order_items (order_id, product_title, qty, price, variant) VALUES (?, ?, ?, ?, ?)",
+          [orderId, item.title, item.qty, item.price, variant]
+        );
       }
-    };
+    }
 
-    const request = https.request(options, (response) => {
-      response.on('data', () => {});
-    });
+    // 3. Format Telegram notification if configured
+    const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+    const tgChatId = process.env.TELEGRAM_CHAT_ID;
+    if (tgToken && tgChatId) {
+      let tgItemsText = '';
+      if (Array.isArray(items)) {
+        items.forEach((item, idx) => {
+          tgItemsText += `${idx + 1}. ${item.title} x${item.qty} = ${item.price}\n`;
+        });
+      }
+      const message = `🍗 *Новый заказ в SD Chicken* 🍗\n\n` +
+        `📞 *Телефон:* ${phone}\n` +
+        `👤 *Имя:* ${name}\n` +
+        `📍 *Адрес:* ${address}\n\n` +
+        `📦 *Заказ:* \n${tgItemsText}\n` +
+        `🔢 *Количество:* ${totalItemsCount} шт.\n` +
+        `💰 *Сумма:* ${total ? total.toLocaleString('ru-RU') : '0'} ₸` +
+        (comment ? `\n💬 *Комментарий:* ${comment}` : '');
 
-    request.on('error', (e) => {
-      console.error('Telegram message failed to send:', e);
-    });
+      const data = JSON.stringify({
+        chat_id: tgChatId,
+        text: message,
+        parse_mode: 'Markdown'
+      });
 
-    request.write(data);
-    request.end();
+      const options = {
+        hostname: 'api.telegram.org',
+        port: 443,
+        path: `/bot${tgToken}/sendMessage`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data)
+        }
+      };
+
+      const request = https.request(options, (response) => {
+        response.on('data', () => {});
+      });
+
+      request.on('error', (e) => {
+        console.error('Telegram message failed to send:', e);
+      });
+
+      request.write(data);
+      request.end();
+    }
+
+    res.status(200).json({ success: true, message: 'Order received and saved to DB', orderId });
+  } catch (err) {
+    console.error('Failed to save order to DB:', err.message);
+    res.status(500).json({ error: 'Order notification failed on server side' });
+  }
+});
+
+// GET /api/reviews - Get all reviews
+app.get('/api/reviews', async (req, res) => {
+  try {
+    const reviews = await query.all("SELECT name, text, rating FROM reviews ORDER BY id DESC");
+    res.json(reviews);
+  } catch (err) {
+    console.error('Failed to get reviews:', err.message);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// POST /api/reviews - Add review
+app.post('/api/reviews', async (req, res) => {
+  const { name, text, rating } = req.body;
+  if (!name || !text) {
+    return res.status(400).json({ error: 'Имя и отзыв обязательны' });
   }
 
-  res.status(200).json({ success: true, message: 'Order received successfully' });
+  try {
+    await query.run(
+      "INSERT INTO reviews (name, text, rating) VALUES (?, ?, ?)",
+      [name, text, rating || 5]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to save review:', err.message);
+    res.status(500).json({ error: 'Failed to save review' });
+  }
 });
 
 app.listen(PORT, () => {

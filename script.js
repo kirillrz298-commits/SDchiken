@@ -1,4 +1,4 @@
-// Структура меню для menu.html
+// Image mapping fallback for backward compatibility
 const menuImageMap = {
   'SD Бургер': 'menu1/sd-burger.png',
   'Классический бургер': 'menu1/classic-burger.png',
@@ -26,63 +26,40 @@ const menuImageMap = {
   'Стрипсы острые — 9 шт': 'menu1/strips.png'
 };
 
-const menuSections = [
-  {
-    category: 'Бургеры',
-    items: [
-      {title: 'SD Бургер', price: '2 190 ₸', desc: 'Хрустящая курица, помидор, соленый огурец, сыр чеддер, соус'},
-      {title: 'Классический бургер', price: '2 000 ₸', desc: 'Хрустящая курица, сыр чеддер, айсберг, соус'},
-      {title: 'Острый бургер', price: '2 290 ₸', desc: 'Хрустящая курица, айсберг, помидор, сыр чеддер, соус'},
-      {title: 'SD Бургер Комбо', price: '3 190 ₸', desc: 'SD Бургер, картофель фри, кола 0,5 л, соус на выбор'},
-      {title: 'Классический бургер Комбо', price: '3 000 ₸', desc: 'Классический бургер, картофель фри, кола 0,5 л, соус на выбор'},
-      {title: 'Острый бургер Комбо', price: '3 290 ₸', desc: 'Острый бургер, картофель фри, кола 0,5 л, соус на выбор'}
-    ]
-  },
-  {
-    category: 'Донеры',
-    items: [
-      {title: 'Донер', price: '1 890 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус'},
-      {title: 'Донер в багете', price: '2 100 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус'},
-      {title: 'Донер Комбо', price: '2 890 ₸', desc: 'Донер, картофель фри, кола 0,5 л, соус на выбор'},
-      {title: 'Донер в багете Комбо', price: '3 190 ₸', desc: 'Донер в багете, картофель фри, кола 0,5 л, соус на выбор'}
-    ]
-  },
-  
-  {
-    category: 'Сеты',
-    items: [
-      {title: 'Сет Friends', price: '10 990 ₸', desc: '4 классических бургера, 12 хрустящих крыльев, фри 4 шт, 4 соуса, кола 1 л'},
-      {title: 'Сет Chicken Mafia', price: '12 690 ₸', desc: '24 хрустящих крыла, 6 куриных ножек, 6 стрипсов, фри 3 шт, кола 1 л, 4 соуса'}
-    ]
-  },
-  {
-    category: 'Закуски и крылья',
-    items: [
-      {title: 'Крылышки острые — 6 шт', price: '2 190 ₸', desc: 'Острые крылышки с фирменным соусом'},
-      {title: 'Крылышки острые — 12 шт', price: '3 990 ₸', desc: 'Острые крылышки с фирменным соусом'},
-      {title: 'Крылышки острые — 20 шт', price: '5 990 ₸', desc: 'Острые крылышки с фирменным соусом'},
-      {title: 'Крылышки острые — 30 шт', price: '7 990 ₸', desc: 'Острые крылышки с фирменным соусом'},
-      {title: 'Крылышки острые — 40 шт', price: '9 990 ₸', desc: 'Острые крылышки с фирменным соусом'},
-      {title: 'Куриные ножки острые — 3 шт', price: '2 690 ₸', desc: 'Острые куриные ножки с сильным вкусом'},
-      {title: 'Куриные ножки острые — 6 шт', price: '5 090 ₸', desc: 'Острые куриные ножки с сильным вкусом'},
-      {title: 'Куриные ножки острые — 9 шт', price: '7 490 ₸', desc: 'Острые куриные ножки с сильным вкусом'},
-      {title: 'Наггетсы классические — 9 шт', price: '1 990 ₸', desc: 'Классические куриные наггетсы'},
-      {title: 'Фри', price: '990 ₸', desc: 'Хрустящий картофель фри'},
-      {title: 'Стрипсы острые — 9 шт', price: '3 390 ₸', desc: 'Острые куриные стрипсы'}
-    ]
-  }
-  ,
-  {
-    category: 'Новинки',
-    items: [
-      {title: 'Фитнес донер', price: '2 500 ₸', desc: 'Много белка, мало жира, максимум вкуса'}
-    ]
-  }
-];
-
+let menuSections = [];
 let cart = [];
 let activeVariants = {};
 let currentUser = null;
+let isHistoryOpen = false;
+
+async function fetchProductsFromDB() {
+  try {
+    const res = await fetch('/api/products');
+    if (!res.ok) throw new Error('Failed to fetch products');
+    const products = await res.json();
+    
+    // Group products by category
+    const categoriesMap = {};
+    products.forEach(p => {
+      if (!categoriesMap[p.category]) {
+        categoriesMap[p.category] = [];
+      }
+      categoriesMap[p.category].push({
+        title: p.title,
+        price: p.price,
+        desc: p.description,
+        image: p.image_path
+      });
+    });
+    
+    menuSections = Object.keys(categoriesMap).map(categoryName => ({
+      category: categoryName,
+      items: categoriesMap[categoryName]
+    }));
+  } catch (err) {
+    console.error('Error loading products from SQLite:', err);
+  }
+}
 
 function loadUserSession() {
   try {
@@ -115,7 +92,7 @@ function updateProfileHeaderBtn() {
     btn.appendChild(avatarDiv);
   } else {
     const span = document.createElement('span');
-    span.textContent = 'Войти';
+    span.textContent = 'Рег';
     btn.appendChild(span);
   }
 }
@@ -135,31 +112,19 @@ function closeProfileModal() {
   document.body.classList.remove('no-scroll');
 }
 
-function saveOrderToUserHistory(order) {
-  if (!currentUser) return;
-  if (!currentUser.orders) currentUser.orders = [];
-  currentUser.orders.push(order);
-  
-  // Update active session
-  localStorage.setItem('sd_active_user', JSON.stringify(currentUser));
-  
-  // Update users list
+async function loadUserOrders() {
+  if (!currentUser) return [];
   try {
-    const usersRaw = localStorage.getItem('sd_users');
-    let users = usersRaw ? JSON.parse(usersRaw) : [];
-    const idx = users.findIndex(u => u.email === currentUser.email);
-    if (idx !== -1) {
-      users[idx].orders = currentUser.orders;
-      localStorage.setItem('sd_users', JSON.stringify(users));
-    }
-  } catch (e) {
-    console.error('Failed to sync user order history:', e);
+    const res = await fetch(`/api/user/orders?userId=${currentUser.id}`);
+    if (!res.ok) throw new Error('Failed to load orders');
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch orders:', err);
+    return currentUser.orders || [];
   }
-  
-  renderProfileView();
 }
 
-function renderProfileView(viewState = 'profile') {
+async function renderProfileView(viewState = 'login') {
   const body = document.getElementById('profileModalBody');
   if (!body) return;
   body.innerHTML = '';
@@ -202,281 +167,299 @@ function renderProfileView(viewState = 'profile') {
       currentUser = null;
       localStorage.removeItem('sd_active_user');
       updateProfileHeaderBtn();
+      isHistoryOpen = false;
       renderProfileView('login');
-      // Re-render checkout to clear prefilled details
       renderCart();
     });
     infoCard.appendChild(logoutBtn);
     container.appendChild(infoCard);
 
-    // Order History
-    const historySection = document.createElement('div');
-    historySection.className = 'order-history-section';
-    const historyHeader = document.createElement('h3');
-    historyHeader.className = 'order-history-header';
-    historyHeader.textContent = 'История заказов';
-    historySection.appendChild(historyHeader);
+    // Order History Toggle Button
+    const historyToggleBtn = document.createElement('button');
+    historyToggleBtn.className = 'btn-history-toggle';
+    historyToggleBtn.textContent = isHistoryOpen ? 'Скрыть историю заказов' : 'История заказов';
+    container.appendChild(historyToggleBtn);
 
+    const historySection = document.createElement('div');
+    historySection.className = 'order-history-section' + (isHistoryOpen ? '' : ' hidden');
+    
     const historyList = document.createElement('div');
     historyList.className = 'order-history-list';
-
-    const orders = currentUser.orders || [];
-    if (orders.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'order-history-empty';
-      empty.textContent = 'У вас пока нет заказов.';
-      historyList.appendChild(empty);
-    } else {
-      [...orders].reverse().forEach(order => {
-        const card = document.createElement('div');
-        card.className = 'order-history-card';
-
-        const header = document.createElement('div');
-        header.className = 'order-history-card-header';
-        const dateSpan = document.createElement('span');
-        dateSpan.textContent = order.date;
-        header.appendChild(dateSpan);
-        card.appendChild(header);
-
-        const itemsDiv = document.createElement('div');
-        itemsDiv.className = 'order-history-card-items';
-        order.items.forEach(item => {
-          const itemRow = document.createElement('div');
-          itemRow.className = 'order-history-card-item';
-          const titleSpan = document.createElement('span');
-          titleSpan.textContent = `${item.title} x${item.qty}`;
-          const priceSpan = document.createElement('span');
-          priceSpan.textContent = item.price;
-          itemRow.appendChild(titleSpan);
-          itemRow.appendChild(priceSpan);
-          itemsDiv.appendChild(itemRow);
-        });
-        card.appendChild(itemsDiv);
-
-        const totalDiv = document.createElement('div');
-        totalDiv.className = 'order-history-card-total';
-        const totLabel = document.createElement('span');
-        totLabel.textContent = 'Итого:';
-        const totVal = document.createElement('span');
-        totVal.textContent = `${order.total.toLocaleString('ru-RU')} ₸`;
-        totalDiv.appendChild(totLabel);
-        totalDiv.appendChild(totVal);
-        card.appendChild(totalDiv);
-
-        historyList.appendChild(card);
-      });
-    }
     historySection.appendChild(historyList);
     container.appendChild(historySection);
 
-    body.appendChild(container);
-  } else if (viewState === 'login') {
-    // Login form
-    const container = document.createElement('div');
-    container.className = 'auth-container';
-    const title = document.createElement('h3');
-    title.className = 'auth-title';
-    title.textContent = 'Вход в аккаунт';
-    container.appendChild(title);
-
-    const form = document.createElement('form');
-    form.className = 'auth-form';
-
-    const emailField = document.createElement('div');
-    emailField.className = 'auth-field';
-    const emailLabel = document.createElement('label');
-    emailLabel.textContent = 'Почта или Номер телефона';
-    const emailInput = document.createElement('input');
-    emailInput.type = 'text';
-    emailInput.className = 'auth-input';
-    emailInput.required = true;
-    emailInput.placeholder = 'email@example.com или +7...';
-    emailField.appendChild(emailLabel);
-    emailField.appendChild(emailInput);
-    form.appendChild(emailField);
-
-    const passField = document.createElement('div');
-    passField.className = 'auth-field';
-    const passLabel = document.createElement('label');
-    passLabel.textContent = 'Пароль';
-    const passInput = document.createElement('input');
-    passInput.type = 'password';
-    passInput.className = 'auth-input';
-    passInput.required = true;
-    passInput.placeholder = 'Введите ваш пароль';
-    passField.appendChild(passLabel);
-    passField.appendChild(passInput);
-    form.appendChild(passField);
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'auth-error hidden';
-    form.appendChild(errorDiv);
-
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit';
-    submitBtn.className = 'btn-auth';
-    submitBtn.textContent = 'Войти';
-    form.appendChild(submitBtn);
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const loginVal = emailInput.value.trim();
-      const passwordVal = passInput.value.trim();
-
-      try {
-        const usersRaw = localStorage.getItem('sd_users');
-        const users = usersRaw ? JSON.parse(usersRaw) : [];
-        const user = users.find(u => (u.email === loginVal || u.phone === loginVal) && u.password === passwordVal);
-        if (user) {
-          currentUser = user;
-          localStorage.setItem('sd_active_user', JSON.stringify(user));
-          updateProfileHeaderBtn();
-          renderProfileView();
-          renderCart();
+    // Handler for toggle button
+    historyToggleBtn.addEventListener('click', async () => {
+      isHistoryOpen = !isHistoryOpen;
+      historyToggleBtn.textContent = isHistoryOpen ? 'Скрыть историю заказов' : 'История заказов';
+      if (isHistoryOpen) {
+        historySection.classList.remove('hidden');
+        historyList.innerHTML = '<div class="order-history-empty">Загрузка заказов...</div>';
+        
+        const orders = await loadUserOrders();
+        historyList.innerHTML = '';
+        if (orders.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'order-history-empty';
+          empty.textContent = 'У вас пока нет заказов.';
+          historyList.appendChild(empty);
         } else {
-          errorDiv.textContent = 'Неверная почта/телефон или пароль.';
-          errorDiv.classList.remove('hidden');
+          [...orders].reverse().forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'order-history-card';
+
+            const header = document.createElement('div');
+            header.className = 'order-history-card-header';
+            const dateSpan = document.createElement('span');
+            dateSpan.textContent = order.date;
+            header.appendChild(dateSpan);
+            card.appendChild(header);
+
+            const itemsDiv = document.createElement('div');
+            itemsDiv.className = 'order-history-card-items';
+            order.items.forEach(item => {
+              const itemRow = document.createElement('div');
+              itemRow.className = 'order-history-card-item';
+              const titleSpan = document.createElement('span');
+              titleSpan.textContent = `${item.title} x${item.qty}`;
+              const priceSpan = document.createElement('span');
+              priceSpan.textContent = item.price;
+              itemRow.appendChild(titleSpan);
+              itemRow.appendChild(priceSpan);
+              itemsDiv.appendChild(itemRow);
+            });
+            card.appendChild(itemsDiv);
+
+            const totalDiv = document.createElement('div');
+            totalDiv.className = 'order-history-card-total';
+            const totLabel = document.createElement('span');
+            totLabel.textContent = 'Итого:';
+            const totVal = document.createElement('span');
+            totVal.textContent = `${order.total.toLocaleString('ru-RU')} ₸`;
+            totalDiv.appendChild(totLabel);
+            totalDiv.appendChild(totVal);
+            card.appendChild(totalDiv);
+
+            historyList.appendChild(card);
+          });
         }
-      } catch (err) {
-        errorDiv.textContent = 'Ошибка при входе.';
-        errorDiv.classList.remove('hidden');
+      } else {
+        historySection.classList.add('hidden');
       }
     });
-
-    container.appendChild(form);
-
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'auth-toggle-btn';
-    toggleBtn.textContent = 'Нет аккаунта? Зарегистрироваться';
-    toggleBtn.addEventListener('click', () => {
-      renderProfileView('register');
-    });
-    container.appendChild(toggleBtn);
 
     body.appendChild(container);
-  } else if (viewState === 'register') {
-    // Registration form
+  } else {
+    // Not logged in -> Show Tabs
     const container = document.createElement('div');
     container.className = 'auth-container';
-    const title = document.createElement('h3');
-    title.className = 'auth-title';
-    title.textContent = 'Регистрация';
-    container.appendChild(title);
 
-    const form = document.createElement('form');
-    form.className = 'auth-form';
+    // Tabs container
+    const tabsContainer = document.createElement('div');
+    tabsContainer.className = 'auth-tabs';
 
-    const nameField = document.createElement('div');
-    nameField.className = 'auth-field';
-    const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'Имя';
-    const nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.className = 'auth-input';
-    nameInput.required = true;
-    nameInput.placeholder = 'Кирилл';
-    nameField.appendChild(nameLabel);
-    nameField.appendChild(nameInput);
-    form.appendChild(nameField);
+    const loginTabBtn = document.createElement('button');
+    loginTabBtn.className = 'auth-tab-btn' + (viewState === 'login' ? ' active' : '');
+    loginTabBtn.textContent = 'Авторизация';
 
-    const phoneField = document.createElement('div');
-    phoneField.className = 'auth-field';
-    const phoneLabel = document.createElement('label');
-    phoneLabel.textContent = 'Номер телефона';
-    const phoneInput = document.createElement('input');
-    phoneInput.type = 'tel';
-    phoneInput.className = 'auth-input';
-    phoneInput.required = true;
-    phoneInput.placeholder = '+7 708 378 2484';
-    phoneField.appendChild(phoneLabel);
-    phoneField.appendChild(phoneInput);
-    form.appendChild(phoneField);
+    const registerTabBtn = document.createElement('button');
+    registerTabBtn.className = 'auth-tab-btn' + (viewState === 'register' ? ' active' : '');
+    registerTabBtn.textContent = 'Регистрация';
 
-    const emailField = document.createElement('div');
-    emailField.className = 'auth-field';
-    const emailLabel = document.createElement('label');
-    emailLabel.textContent = 'Почта (Email)';
-    const emailInput = document.createElement('input');
-    emailInput.type = 'email';
-    emailInput.className = 'auth-input';
-    emailInput.required = true;
-    emailInput.placeholder = 'email@example.com';
-    emailField.appendChild(emailLabel);
-    emailField.appendChild(emailInput);
-    form.appendChild(emailField);
+    tabsContainer.appendChild(loginTabBtn);
+    tabsContainer.appendChild(registerTabBtn);
+    container.appendChild(tabsContainer);
 
-    const passField = document.createElement('div');
-    passField.className = 'auth-field';
-    const passLabel = document.createElement('label');
-    passLabel.textContent = 'Пароль';
-    const passInput = document.createElement('input');
-    passInput.type = 'password';
-    passInput.className = 'auth-input';
-    passInput.required = true;
-    passInput.placeholder = 'Создайте пароль';
-    passField.appendChild(passLabel);
-    passField.appendChild(passInput);
-    form.appendChild(passField);
+    const formContainer = document.createElement('div');
+    container.appendChild(formContainer);
 
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'auth-error hidden';
-    form.appendChild(errorDiv);
-
-    const submitBtn = document.createElement('button');
-    submitBtn.type = 'submit';
-    submitBtn.className = 'btn-auth';
-    submitBtn.textContent = 'Зарегистрироваться';
-    form.appendChild(submitBtn);
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const nameVal = nameInput.value.trim();
-      const phoneVal = phoneInput.value.trim();
-      const emailVal = emailInput.value.trim();
-      const passwordVal = passInput.value.trim();
-
-      try {
-        const usersRaw = localStorage.getItem('sd_users');
-        let users = usersRaw ? JSON.parse(usersRaw) : [];
-
-        const exists = users.some(u => u.email === emailVal || u.phone === phoneVal);
-        if (exists) {
-          errorDiv.textContent = 'Пользователь с такой почтой или телефоном уже существует.';
-          errorDiv.classList.remove('hidden');
-          return;
-        }
-
-        const newUser = {
-          name: nameVal,
-          phone: phoneVal,
-          email: emailVal,
-          password: passwordVal,
-          orders: []
-        };
-        users.push(newUser);
-        localStorage.setItem('sd_users', JSON.stringify(users));
-
-        currentUser = newUser;
-        localStorage.setItem('sd_active_user', JSON.stringify(newUser));
-
-        updateProfileHeaderBtn();
-        renderProfileView();
-        renderCart();
-      } catch (err) {
-        errorDiv.textContent = 'Ошибка при регистрации.';
-        errorDiv.classList.remove('hidden');
-      }
-    });
-
-    container.appendChild(form);
-
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'auth-toggle-btn';
-    toggleBtn.textContent = 'Уже есть аккаунт? Войти';
-    toggleBtn.addEventListener('click', () => {
+    // Switch tabs handler
+    loginTabBtn.addEventListener('click', () => {
       renderProfileView('login');
     });
-    container.appendChild(toggleBtn);
+    registerTabBtn.addEventListener('click', () => {
+      renderProfileView('register');
+    });
+
+    if (viewState === 'login') {
+      // Login Form
+      const title = document.createElement('h3');
+      title.className = 'auth-title';
+      title.textContent = 'Вход в аккаунт';
+      formContainer.appendChild(title);
+
+      const form = document.createElement('form');
+      form.className = 'auth-form';
+
+      const emailField = document.createElement('div');
+      emailField.className = 'auth-field';
+      const emailLabel = document.createElement('label');
+      emailLabel.textContent = 'Почта или Номер телефона';
+      const emailInput = document.createElement('input');
+      emailInput.type = 'text';
+      emailInput.className = 'auth-input';
+      emailInput.required = true;
+      emailInput.placeholder = 'email@example.com или +7...';
+      emailField.appendChild(emailLabel);
+      emailField.appendChild(emailInput);
+      form.appendChild(emailField);
+
+      const passField = document.createElement('div');
+      passField.className = 'auth-field';
+      const passLabel = document.createElement('label');
+      passLabel.textContent = 'Пароль';
+      const passInput = document.createElement('input');
+      passInput.type = 'password';
+      passInput.className = 'auth-input';
+      passInput.required = true;
+      passInput.placeholder = 'Введите ваш пароль';
+      passField.appendChild(passLabel);
+      passField.appendChild(passInput);
+      form.appendChild(passField);
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'auth-error hidden';
+      form.appendChild(errorDiv);
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn-auth';
+      submitBtn.textContent = 'Войти';
+      form.appendChild(submitBtn);
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const loginVal = emailInput.value.trim();
+        const passwordVal = passInput.value.trim();
+
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loginVal, password: passwordVal })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            currentUser = data.user;
+            localStorage.setItem('sd_active_user', JSON.stringify(currentUser));
+            updateProfileHeaderBtn();
+            renderProfileView();
+            renderCart();
+          } else {
+            errorDiv.textContent = data.error || 'Неверная почта/телефон или пароль.';
+            errorDiv.classList.remove('hidden');
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Ошибка при входе в систему.';
+          errorDiv.classList.remove('hidden');
+        }
+      });
+
+      formContainer.appendChild(form);
+    } else {
+      // Register Form
+      const title = document.createElement('h3');
+      title.className = 'auth-title';
+      title.textContent = 'Создать аккаунт';
+      formContainer.appendChild(title);
+
+      const form = document.createElement('form');
+      form.className = 'auth-form';
+
+      const nameField = document.createElement('div');
+      nameField.className = 'auth-field';
+      const nameLabel = document.createElement('label');
+      nameLabel.textContent = 'Имя';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'auth-input';
+      nameInput.required = true;
+      nameInput.placeholder = 'Кирилл';
+      nameField.appendChild(nameLabel);
+      nameField.appendChild(nameInput);
+      form.appendChild(nameField);
+
+      const phoneField = document.createElement('div');
+      phoneField.className = 'auth-field';
+      const phoneLabel = document.createElement('label');
+      phoneLabel.textContent = 'Номер телефона';
+      const phoneInput = document.createElement('input');
+      phoneInput.type = 'tel';
+      phoneInput.className = 'auth-input';
+      phoneInput.required = true;
+      phoneInput.placeholder = '+7 708 378 2484';
+      phoneField.appendChild(phoneLabel);
+      phoneField.appendChild(phoneInput);
+      form.appendChild(phoneField);
+
+      const emailField = document.createElement('div');
+      emailField.className = 'auth-field';
+      const emailLabel = document.createElement('label');
+      emailLabel.textContent = 'Почта (Email)';
+      const emailInput = document.createElement('input');
+      emailInput.type = 'email';
+      emailInput.className = 'auth-input';
+      emailInput.required = true;
+      emailInput.placeholder = 'email@example.com';
+      emailField.appendChild(emailLabel);
+      emailField.appendChild(emailInput);
+      form.appendChild(emailField);
+
+      const passField = document.createElement('div');
+      passField.className = 'auth-field';
+      const passLabel = document.createElement('label');
+      passLabel.textContent = 'Пароль';
+      const passInput = document.createElement('input');
+      passInput.type = 'password';
+      passInput.className = 'auth-input';
+      passInput.required = true;
+      passInput.placeholder = 'Создайте пароль';
+      passField.appendChild(passLabel);
+      passField.appendChild(passInput);
+      form.appendChild(passField);
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'auth-error hidden';
+      form.appendChild(errorDiv);
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn-auth';
+      submitBtn.textContent = 'Зарегистрироваться';
+      form.appendChild(submitBtn);
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nameVal = nameInput.value.trim();
+        const phoneVal = phoneInput.value.trim();
+        const emailVal = emailInput.value.trim();
+        const passwordVal = passInput.value.trim();
+
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: nameVal, phone: phoneVal, email: emailVal, password: passwordVal })
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            currentUser = data.user;
+            localStorage.setItem('sd_active_user', JSON.stringify(currentUser));
+            updateProfileHeaderBtn();
+            renderProfileView();
+            renderCart();
+          } else {
+            errorDiv.textContent = data.error || 'Ошибка при регистрации.';
+            errorDiv.classList.remove('hidden');
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Ошибка сети при регистрации.';
+          errorDiv.classList.remove('hidden');
+        }
+      });
+
+      formContainer.appendChild(form);
+    }
 
     body.appendChild(container);
   }
@@ -683,7 +666,8 @@ function renderCheckout(total){
       return {
         title: itemTitle + variantLabel,
         qty: item.qty,
-        price: item.price
+        price: item.price,
+        variant: item.variant || 'default'
       };
     });
 
@@ -706,33 +690,34 @@ function renderCheckout(total){
     const waUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(orderMsg)}`;
     window.open(waUrl, '_blank');
 
-    // 2. Silent POST request to the local Express server
+    // 2. Save order to history if user is logged in & silent POST request to the local server
     const addressString = `ул. ${street}, д. ${house}${floor ? ', эт. ' + floor : ''}${apartment ? ', кв. ' + apartment : ''}`;
+    const orderPayload = {
+      name,
+      phone,
+      address: addressString,
+      items: itemsData,
+      total,
+      comment,
+      userId: currentUser ? currentUser.id : null
+    };
+
     fetch('/api/order', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        name,
-        phone,
-        address: addressString,
-        items: itemsData,
-        total,
-        comment
-      })
-    }).catch(err => console.error('Silent order sync failed:', err));
-
-    // 3. Save order to history if user is logged in
-    if (currentUser) {
-      const historyOrder = {
-        date: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}),
-        items: itemsData,
-        total,
-        address: addressString
-      };
-      saveOrderToUserHistory(historyOrder);
-    }
+      body: JSON.stringify(orderPayload)
+    })
+    .then(async res => {
+      const result = await res.json();
+      if (res.ok && currentUser) {
+        const updatedOrders = await loadUserOrders();
+        currentUser.orders = updatedOrders;
+        localStorage.setItem('sd_active_user', JSON.stringify(currentUser));
+      }
+    })
+    .catch(err => console.error('Silent order sync failed:', err));
 
     notice.style.color = 'var(--yellow)';
     notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Вы перенаправлены в WhatsApp для отправки сообщения ассистенту.`;
@@ -1099,40 +1084,39 @@ function renderMenuSections(){
   });
 }
 
-function loadReviews(){
-  const key = 'sd_reviews_v1';
-  let reviews = [];
-  try {
-    const raw = localStorage.getItem(key);
-    reviews = raw ? JSON.parse(raw) : [];
-  } catch {
-    reviews = [];
-  }
+async function loadReviews() {
   const list = document.getElementById('reviewsList');
   if (!list) return;
-  list.innerHTML = '';
-  reviews.forEach(r => {
-    const div = document.createElement('div');
-    div.className = 'review';
-    div.innerHTML = `<strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.text)}</p>`;
-    list.appendChild(div);
-  });
+  list.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: rgba(255,255,255,0.6)">Загрузка отзывов...</div>';
+  try {
+    const res = await fetch('/api/reviews');
+    if (!res.ok) throw new Error('Reviews fetch failed');
+    const reviews = await res.json();
+    list.innerHTML = '';
+    reviews.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'review';
+      div.innerHTML = `<strong>${escapeHtml(r.name)}</strong><p>${escapeHtml(r.text)}</p>`;
+      list.appendChild(div);
+    });
+  } catch (err) {
+    console.error('Failed to load reviews from DB:', err);
+    list.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #ff5533;">Ошибка загрузки отзывов</div>';
+  }
 }
 
-function saveReview(review){
-  const key = 'sd_reviews_v1';
-  let reviews = [];
+async function saveReview(review) {
   try {
-    const raw = localStorage.getItem(key);
-    reviews = raw ? JSON.parse(raw) : [];
-  } catch {
-    reviews = [];
-  }
-  reviews.unshift(review);
-  try {
-    localStorage.setItem(key, JSON.stringify(reviews));
-  } catch (e) {
-    console.error('Failed to save review', e);
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(review)
+    });
+    if (res.ok) {
+      loadReviews();
+    }
+  } catch (err) {
+    console.error('Failed to save review to DB:', err);
   }
 }
 
@@ -1150,13 +1134,16 @@ function initFAQ(){
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.body.classList.remove('no-scroll');
   
   loadCart();
   loadUserSession();
   updateCartCount();
   updateProfileHeaderBtn();
+
+  // Load products dynamically from SQLite DB
+  await fetchProductsFromDB();
 
   if (document.getElementById('menuContainer')) {
     renderMenuSections();
@@ -1180,7 +1167,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveReview({name, text});
       if (nameInput instanceof HTMLInputElement || nameInput instanceof HTMLTextAreaElement) nameInput.value = '';
       if (textInput instanceof HTMLInputElement || textInput instanceof HTMLTextAreaElement) textInput.value = '';
-      loadReviews();
     });
   }
 
@@ -1229,4 +1215,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
