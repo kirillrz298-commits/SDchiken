@@ -81,6 +81,406 @@ const menuSections = [
 ];
 
 let cart = [];
+let activeVariants = {};
+let currentUser = null;
+
+function loadUserSession() {
+  try {
+    const raw = localStorage.getItem('sd_active_user');
+    currentUser = raw ? JSON.parse(raw) : null;
+  } catch {
+    currentUser = null;
+  }
+}
+
+function updateProfileHeaderBtn() {
+  const btn = document.getElementById('profileBtn');
+  if (!btn) return;
+  btn.innerHTML = '';
+  if (currentUser) {
+    const initial = currentUser.name ? currentUser.name.trim().charAt(0) : 'U';
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'profile-avatar-initial';
+    avatarDiv.style.width = '100%';
+    avatarDiv.style.height = '100%';
+    avatarDiv.style.borderRadius = '50%';
+    avatarDiv.style.background = 'var(--orange)';
+    avatarDiv.style.color = '#fff';
+    avatarDiv.style.display = 'flex';
+    avatarDiv.style.alignItems = 'center';
+    avatarDiv.style.justifyContent = 'center';
+    avatarDiv.style.fontWeight = '800';
+    avatarDiv.style.fontSize = '16px';
+    avatarDiv.textContent = initial.toUpperCase();
+    btn.appendChild(avatarDiv);
+  } else {
+    const span = document.createElement('span');
+    span.textContent = 'Войти';
+    btn.appendChild(span);
+  }
+}
+
+function openProfileModal() {
+  const modal = document.getElementById('profileModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.classList.add('no-scroll');
+  renderProfileView();
+}
+
+function closeProfileModal() {
+  const modal = document.getElementById('profileModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  document.body.classList.remove('no-scroll');
+}
+
+function saveOrderToUserHistory(order) {
+  if (!currentUser) return;
+  if (!currentUser.orders) currentUser.orders = [];
+  currentUser.orders.push(order);
+  
+  // Update active session
+  localStorage.setItem('sd_active_user', JSON.stringify(currentUser));
+  
+  // Update users list
+  try {
+    const usersRaw = localStorage.getItem('sd_users');
+    let users = usersRaw ? JSON.parse(usersRaw) : [];
+    const idx = users.findIndex(u => u.email === currentUser.email);
+    if (idx !== -1) {
+      users[idx].orders = currentUser.orders;
+      localStorage.setItem('sd_users', JSON.stringify(users));
+    }
+  } catch (e) {
+    console.error('Failed to sync user order history:', e);
+  }
+  
+  renderProfileView();
+}
+
+function renderProfileView(viewState = 'profile') {
+  const body = document.getElementById('profileModalBody');
+  if (!body) return;
+  body.innerHTML = '';
+
+  if (currentUser) {
+    // Render profile details and history
+    const container = document.createElement('div');
+    container.className = 'auth-container';
+
+    const infoCard = document.createElement('div');
+    infoCard.className = 'profile-info-card';
+
+    const avatarLarge = document.createElement('div');
+    avatarLarge.className = 'profile-avatar-large';
+    avatarLarge.textContent = (currentUser.name ? currentUser.name.trim().charAt(0) : 'U').toUpperCase();
+    infoCard.appendChild(avatarLarge);
+
+    const addRow = (label, val) => {
+      const row = document.createElement('div');
+      row.className = 'profile-detail-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'profile-detail-label';
+      lbl.textContent = label;
+      const v = document.createElement('span');
+      v.className = 'profile-detail-value';
+      v.textContent = val;
+      row.appendChild(lbl);
+      row.appendChild(v);
+      infoCard.appendChild(row);
+    };
+
+    addRow('Имя', currentUser.name);
+    addRow('Телефон', currentUser.phone);
+    addRow('Почта', currentUser.email);
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'btn-logout';
+    logoutBtn.textContent = 'Выйти из аккаунта';
+    logoutBtn.addEventListener('click', () => {
+      currentUser = null;
+      localStorage.removeItem('sd_active_user');
+      updateProfileHeaderBtn();
+      renderProfileView('login');
+      // Re-render checkout to clear prefilled details
+      renderCart();
+    });
+    infoCard.appendChild(logoutBtn);
+    container.appendChild(infoCard);
+
+    // Order History
+    const historySection = document.createElement('div');
+    historySection.className = 'order-history-section';
+    const historyHeader = document.createElement('h3');
+    historyHeader.className = 'order-history-header';
+    historyHeader.textContent = 'История заказов';
+    historySection.appendChild(historyHeader);
+
+    const historyList = document.createElement('div');
+    historyList.className = 'order-history-list';
+
+    const orders = currentUser.orders || [];
+    if (orders.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'order-history-empty';
+      empty.textContent = 'У вас пока нет заказов.';
+      historyList.appendChild(empty);
+    } else {
+      [...orders].reverse().forEach(order => {
+        const card = document.createElement('div');
+        card.className = 'order-history-card';
+
+        const header = document.createElement('div');
+        header.className = 'order-history-card-header';
+        const dateSpan = document.createElement('span');
+        dateSpan.textContent = order.date;
+        header.appendChild(dateSpan);
+        card.appendChild(header);
+
+        const itemsDiv = document.createElement('div');
+        itemsDiv.className = 'order-history-card-items';
+        order.items.forEach(item => {
+          const itemRow = document.createElement('div');
+          itemRow.className = 'order-history-card-item';
+          const titleSpan = document.createElement('span');
+          titleSpan.textContent = `${item.title} x${item.qty}`;
+          const priceSpan = document.createElement('span');
+          priceSpan.textContent = item.price;
+          itemRow.appendChild(titleSpan);
+          itemRow.appendChild(priceSpan);
+          itemsDiv.appendChild(itemRow);
+        });
+        card.appendChild(itemsDiv);
+
+        const totalDiv = document.createElement('div');
+        totalDiv.className = 'order-history-card-total';
+        const totLabel = document.createElement('span');
+        totLabel.textContent = 'Итого:';
+        const totVal = document.createElement('span');
+        totVal.textContent = `${order.total.toLocaleString('ru-RU')} ₸`;
+        totalDiv.appendChild(totLabel);
+        totalDiv.appendChild(totVal);
+        card.appendChild(totalDiv);
+
+        historyList.appendChild(card);
+      });
+    }
+    historySection.appendChild(historyList);
+    container.appendChild(historySection);
+
+    body.appendChild(container);
+  } else if (viewState === 'login') {
+    // Login form
+    const container = document.createElement('div');
+    container.className = 'auth-container';
+    const title = document.createElement('h3');
+    title.className = 'auth-title';
+    title.textContent = 'Вход в аккаунт';
+    container.appendChild(title);
+
+    const form = document.createElement('form');
+    form.className = 'auth-form';
+
+    const emailField = document.createElement('div');
+    emailField.className = 'auth-field';
+    const emailLabel = document.createElement('label');
+    emailLabel.textContent = 'Почта или Номер телефона';
+    const emailInput = document.createElement('input');
+    emailInput.type = 'text';
+    emailInput.className = 'auth-input';
+    emailInput.required = true;
+    emailInput.placeholder = 'email@example.com или +7...';
+    emailField.appendChild(emailLabel);
+    emailField.appendChild(emailInput);
+    form.appendChild(emailField);
+
+    const passField = document.createElement('div');
+    passField.className = 'auth-field';
+    const passLabel = document.createElement('label');
+    passLabel.textContent = 'Пароль';
+    const passInput = document.createElement('input');
+    passInput.type = 'password';
+    passInput.className = 'auth-input';
+    passInput.required = true;
+    passInput.placeholder = 'Введите ваш пароль';
+    passField.appendChild(passLabel);
+    passField.appendChild(passInput);
+    form.appendChild(passField);
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'auth-error hidden';
+    form.appendChild(errorDiv);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'btn-auth';
+    submitBtn.textContent = 'Войти';
+    form.appendChild(submitBtn);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const loginVal = emailInput.value.trim();
+      const passwordVal = passInput.value.trim();
+
+      try {
+        const usersRaw = localStorage.getItem('sd_users');
+        const users = usersRaw ? JSON.parse(usersRaw) : [];
+        const user = users.find(u => (u.email === loginVal || u.phone === loginVal) && u.password === passwordVal);
+        if (user) {
+          currentUser = user;
+          localStorage.setItem('sd_active_user', JSON.stringify(user));
+          updateProfileHeaderBtn();
+          renderProfileView();
+          renderCart();
+        } else {
+          errorDiv.textContent = 'Неверная почта/телефон или пароль.';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Ошибка при входе.';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+
+    container.appendChild(form);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'auth-toggle-btn';
+    toggleBtn.textContent = 'Нет аккаунта? Зарегистрироваться';
+    toggleBtn.addEventListener('click', () => {
+      renderProfileView('register');
+    });
+    container.appendChild(toggleBtn);
+
+    body.appendChild(container);
+  } else if (viewState === 'register') {
+    // Registration form
+    const container = document.createElement('div');
+    container.className = 'auth-container';
+    const title = document.createElement('h3');
+    title.className = 'auth-title';
+    title.textContent = 'Регистрация';
+    container.appendChild(title);
+
+    const form = document.createElement('form');
+    form.className = 'auth-form';
+
+    const nameField = document.createElement('div');
+    nameField.className = 'auth-field';
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Имя';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'auth-input';
+    nameInput.required = true;
+    nameInput.placeholder = 'Кирилл';
+    nameField.appendChild(nameLabel);
+    nameField.appendChild(nameInput);
+    form.appendChild(nameField);
+
+    const phoneField = document.createElement('div');
+    phoneField.className = 'auth-field';
+    const phoneLabel = document.createElement('label');
+    phoneLabel.textContent = 'Номер телефона';
+    const phoneInput = document.createElement('input');
+    phoneInput.type = 'tel';
+    phoneInput.className = 'auth-input';
+    phoneInput.required = true;
+    phoneInput.placeholder = '+7 708 378 2484';
+    phoneField.appendChild(phoneLabel);
+    phoneField.appendChild(phoneInput);
+    form.appendChild(phoneField);
+
+    const emailField = document.createElement('div');
+    emailField.className = 'auth-field';
+    const emailLabel = document.createElement('label');
+    emailLabel.textContent = 'Почта (Email)';
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.className = 'auth-input';
+    emailInput.required = true;
+    emailInput.placeholder = 'email@example.com';
+    emailField.appendChild(emailLabel);
+    emailField.appendChild(emailInput);
+    form.appendChild(emailField);
+
+    const passField = document.createElement('div');
+    passField.className = 'auth-field';
+    const passLabel = document.createElement('label');
+    passLabel.textContent = 'Пароль';
+    const passInput = document.createElement('input');
+    passInput.type = 'password';
+    passInput.className = 'auth-input';
+    passInput.required = true;
+    passInput.placeholder = 'Создайте пароль';
+    passField.appendChild(passLabel);
+    passField.appendChild(passInput);
+    form.appendChild(passField);
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'auth-error hidden';
+    form.appendChild(errorDiv);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'btn-auth';
+    submitBtn.textContent = 'Зарегистрироваться';
+    form.appendChild(submitBtn);
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nameVal = nameInput.value.trim();
+      const phoneVal = phoneInput.value.trim();
+      const emailVal = emailInput.value.trim();
+      const passwordVal = passInput.value.trim();
+
+      try {
+        const usersRaw = localStorage.getItem('sd_users');
+        let users = usersRaw ? JSON.parse(usersRaw) : [];
+
+        const exists = users.some(u => u.email === emailVal || u.phone === phoneVal);
+        if (exists) {
+          errorDiv.textContent = 'Пользователь с такой почтой или телефоном уже существует.';
+          errorDiv.classList.remove('hidden');
+          return;
+        }
+
+        const newUser = {
+          name: nameVal,
+          phone: phoneVal,
+          email: emailVal,
+          password: passwordVal,
+          orders: []
+        };
+        users.push(newUser);
+        localStorage.setItem('sd_users', JSON.stringify(users));
+
+        currentUser = newUser;
+        localStorage.setItem('sd_active_user', JSON.stringify(newUser));
+
+        updateProfileHeaderBtn();
+        renderProfileView();
+        renderCart();
+      } catch (err) {
+        errorDiv.textContent = 'Ошибка при регистрации.';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+
+    container.appendChild(form);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'auth-toggle-btn';
+    toggleBtn.textContent = 'Уже есть аккаунт? Войти';
+    toggleBtn.addEventListener('click', () => {
+      renderProfileView('login');
+    });
+    container.appendChild(toggleBtn);
+
+    body.appendChild(container);
+  }
+}
 
 function getCartStorageKey(){
   return 'sd_cart_v1';
@@ -174,8 +574,18 @@ function renderCheckout(total){
 
   const contactGroup = document.createElement('div');
   contactGroup.className = 'checkout-group';
-  contactGroup.appendChild(createCheckoutInput({labelText: 'Ваше имя', id: 'checkoutName', placeholder: 'Иван Петров'}));
-  contactGroup.appendChild(createCheckoutInput({labelText: 'Номер телефона', id: 'checkoutPhone', placeholder: '+7 708 378 2484', type: 'tel'}));
+
+  // Prefill name & phone if logged in
+  const nameField = createCheckoutInput({labelText: 'Ваше имя', id: 'checkoutName', placeholder: 'Иван Петров'});
+  const nameInput = nameField.querySelector('input');
+  if (nameInput && currentUser) nameInput.value = currentUser.name;
+
+  const phoneField = createCheckoutInput({labelText: 'Номер телефона', id: 'checkoutPhone', placeholder: '+7 708 378 2484', type: 'tel'});
+  const phoneInput = phoneField.querySelector('input');
+  if (phoneInput && currentUser) phoneInput.value = currentUser.phone;
+
+  contactGroup.appendChild(nameField);
+  contactGroup.appendChild(phoneField);
   checkoutEl.appendChild(contactGroup);
 
   const addressGroup = document.createElement('div');
@@ -188,7 +598,7 @@ function renderCheckout(total){
 
   const infoBox = document.createElement('div');
   infoBox.className = 'checkout-info-box';
-  infoBox.textContent = 'При оформлении заказа в течение 2-3 минут вам позвонят для подтверждения заказа и способа оплаты.';
+  infoBox.textContent = 'При нажатии оформления вы перейдете в ват сап и вы должны отправить сообщения асистенту.';
   checkoutEl.appendChild(infoBox);
 
   const commentField = document.createElement('div');
@@ -260,7 +670,7 @@ function renderCheckout(total){
     // Format the items details for the message
     let itemsText = '';
     let totalQty = 0;
-    cart.forEach((item, index) => {
+    const itemsData = cart.map(item => {
       const hasSpicy = /крылышки|ножки|стрипсы/i.test(item.title);
       let itemTitle = item.title;
       let variantLabel = '';
@@ -270,7 +680,15 @@ function renderCheckout(total){
       } else if (item.variant && item.variant !== 'default') {
         variantLabel = ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
       }
-      itemsText += `${index + 1}. ${itemTitle}${variantLabel} x${item.qty} = ${item.price}\n`;
+      return {
+        title: itemTitle + variantLabel,
+        qty: item.qty,
+        price: item.price
+      };
+    });
+
+    itemsData.forEach((item, index) => {
+      itemsText += `${index + 1}. ${item.title} x${item.qty} = ${item.price}\n`;
       totalQty += item.qty;
     });
 
@@ -299,25 +717,25 @@ function renderCheckout(total){
         name,
         phone,
         address: addressString,
-        items: cart.map(item => {
-          const hasSpicy = /крылышки|ножки|стрипсы/i.test(item.title);
-          let itemTitle = item.title;
-          if (hasSpicy && item.variant && item.variant !== 'default') {
-            itemTitle = item.title.replace(/острые?\s*/i, '').trim() + ` (${item.variant === 'spicy' ? 'Острые' : 'Обычные'})`;
-          }
-          return {
-            title: itemTitle,
-            qty: item.qty,
-            price: item.price
-          };
-        }),
+        items: itemsData,
         total,
         comment
       })
     }).catch(err => console.error('Silent order sync failed:', err));
 
+    // 3. Save order to history if user is logged in
+    if (currentUser) {
+      const historyOrder = {
+        date: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}),
+        items: itemsData,
+        total,
+        address: addressString
+      };
+      saveOrderToUserHistory(historyOrder);
+    }
+
     notice.style.color = 'var(--yellow)';
-    notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Наш оператор свяжется с вами по телефону <strong>${escapeHtml(phone)}</strong> в течение 5 минут.`;
+    notice.innerHTML = `🎉 <strong>Спасибо, ${escapeHtml(name)}!</strong> Ваш заказ на сумму ${total.toLocaleString('ru-RU')} ₸ успешно оформлен.<br>Вы перенаправлены в WhatsApp для отправки сообщения ассистенту.`;
 
     setTimeout(() => {
       cart = [];
@@ -328,7 +746,6 @@ function renderCheckout(total){
     }, 4000);
   });
   checkoutEl.appendChild(orderButton);
-
 
   const totalRow = document.createElement('div');
   totalRow.className = 'checkout-total-row';
@@ -347,7 +764,6 @@ function getPriceValue(price){
 }
 
 function addToCart(item){
-  // support variant (e.g., 'spicy' or 'normal') to distinguish items like wings
   const variant = item.variant || 'default';
   const exists = cart.find(cartItem => cartItem.title === item.title && (cartItem.variant || 'default') === variant);
   if (exists){
@@ -365,7 +781,6 @@ function addToCart(item){
   saveCart();
   updateCartCount();
   renderCart();
-  // keep menu UI in sync with cart (update per-card controls)
   renderMenuSections();
 }
 
@@ -379,7 +794,6 @@ function changeCartQty(title, delta, variant = 'default'){
   saveCart();
   updateCartCount();
   renderCart();
-  // update menu cards to reflect cart changes
   renderMenuSections();
 }
 
@@ -456,7 +870,214 @@ function renderCart(){
   renderCheckout(total);
 }
 
+function getSelectedVariant(itemTitle, hasSpicyOption) {
+  if (!hasSpicyOption) return 'default';
+  if (activeVariants[itemTitle]) return activeVariants[itemTitle];
+  
+  const hasSpicyInCart = cart.some(c => c.title === itemTitle && c.variant === 'spicy');
+  const hasNormalInCart = cart.some(c => c.title === itemTitle && c.variant === 'normal');
+  if (hasNormalInCart && !hasSpicyInCart) {
+    return 'normal';
+  }
+  return 'spicy';
+}
+
+function createCardDOM(item) {
+  const hasSpicyOption = /крылышки|ножки|стрипсы/i.test(item.title);
+  const card = document.createElement('div');
+  card.className = 'menu-card';
+  
+  const imageWrapper = document.createElement('div');
+  imageWrapper.className = 'menu-card-image';
+  const img = document.createElement('img');
+  const imagePath = item.image || menuImageMap[item.title] || '';
+  img.src = encodeURI(imagePath);
+  img.alt = item.title;
+  
+  if (item.title === 'Фитнес донер') {
+    img.style.opacity = '1';
+    img.style.filter = 'none';
+  }
+  
+  const badge = document.createElement('div');
+  badge.className = 'menu-card-badge';
+  badge.textContent = item.price;
+  
+  imageWrapper.appendChild(img);
+  imageWrapper.appendChild(badge);
+  
+  const content = document.createElement('div');
+  content.className = 'menu-card-content';
+  
+  const title = document.createElement('h3');
+  title.className = 'menu-card-title';
+  let displayTitle = item.title;
+  if (hasSpicyOption) {
+    displayTitle = item.title.replace(/острые?\s*/i, '').trim() + ' — Острые/Не острые';
+  }
+  title.textContent = displayTitle;
+  
+  const desc = document.createElement('p');
+  desc.className = 'menu-card-desc';
+  desc.textContent = item.desc;
+  
+  const price = document.createElement('div');
+  price.className = 'menu-card-price';
+  price.textContent = item.price;
+  
+  const actionArea = document.createElement('div');
+  actionArea.className = 'menu-card-action';
+  
+  let selectedVariant = getSelectedVariant(item.title, hasSpicyOption);
+  activeVariants[item.title] = selectedVariant;
+  
+  const variantSelector = document.createElement('div');
+  variantSelector.className = 'variant-selector';
+  
+  function renderVariantButtons() {
+    variantSelector.innerHTML = '';
+    const spicyBtn = document.createElement('button');
+    spicyBtn.className = 'btn-variant';
+    spicyBtn.textContent = 'Острые';
+    const normalBtn = document.createElement('button');
+    normalBtn.className = 'btn-variant';
+    normalBtn.textContent = 'Обычные';
+    
+    function updateActive() {
+      spicyBtn.classList.toggle('active', selectedVariant === 'spicy');
+      normalBtn.classList.toggle('active', selectedVariant === 'normal');
+    }
+    
+    spicyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedVariant = 'spicy';
+      activeVariants[item.title] = 'spicy';
+      updateActive();
+      renderActionByVariant();
+    });
+    
+    normalBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedVariant = 'normal';
+      activeVariants[item.title] = 'normal';
+      updateActive();
+      renderActionByVariant();
+    });
+    
+    variantSelector.appendChild(spicyBtn);
+    variantSelector.appendChild(normalBtn);
+    updateActive();
+  }
+  
+  function createQtyControls(currentQty) {
+    actionArea.innerHTML = '';
+    
+    const controlsWrapper = document.createElement('div');
+    controlsWrapper.className = 'qty-controls-wrapper';
+    
+    const minus = document.createElement('button');
+    minus.className = 'btn btn-qty';
+    minus.textContent = '-';
+    const count = document.createElement('span');
+    count.className = 'menu-card-count';
+    count.textContent = currentQty;
+    const plus = document.createElement('button');
+    plus.className = 'btn btn-qty';
+    plus.textContent = '+';
+    
+    minus.addEventListener('click', (e) => {
+      e.stopPropagation();
+      changeCartQty(item.title, -1, selectedVariant);
+    });
+    plus.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
+    });
+    
+    controlsWrapper.appendChild(minus);
+    controlsWrapper.appendChild(count);
+    controlsWrapper.appendChild(plus);
+    
+    if (hasSpicyOption) actionArea.appendChild(variantSelector);
+    actionArea.appendChild(controlsWrapper);
+  }
+  
+  function createChooseButton() {
+    actionArea.innerHTML = '';
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'btn btn-select';
+    action.textContent = 'Выбрать';
+    action.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
+    });
+    if (hasSpicyOption) actionArea.appendChild(variantSelector);
+    actionArea.appendChild(action);
+  }
+  
+  function renderActionByVariant() {
+    if (!hasSpicyOption) {
+      const existing = cart.find(c => c.title === item.title);
+      if (existing && existing.qty > 0) createQtyControls(existing.qty);
+      else createChooseButton();
+      return;
+    }
+    const existing = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
+    if (existing && existing.qty > 0) createQtyControls(existing.qty);
+    else createChooseButton();
+  }
+  
+  if (hasSpicyOption) renderVariantButtons();
+  renderActionByVariant();
+  
+  content.appendChild(title);
+  content.appendChild(desc);
+  content.appendChild(price);
+  content.appendChild(actionArea);
+  
+  card.appendChild(imageWrapper);
+  card.appendChild(content);
+  
+  return card;
+}
+
+function renderPopularDishes() {
+  const container = document.getElementById('popularDishesContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const popularTitles = [
+    'SD Бургер',
+    'Донер',
+    'Крылышки острые — 6 шт',
+    'Сет Friends'
+  ];
+  
+  const itemsToRender = [];
+  popularTitles.forEach(title => {
+    let foundItem = null;
+    for (const section of menuSections) {
+      const match = section.items.find(it => it.title === title);
+      if (match) {
+        foundItem = match;
+        break;
+      }
+    }
+    if (foundItem) {
+      itemsToRender.push(foundItem);
+    }
+  });
+  
+  itemsToRender.forEach(item => {
+    const card = createCardDOM(item);
+    container.appendChild(card);
+  });
+}
+
 function renderMenuSections(){
+  renderPopularDishes();
+
   const container = document.getElementById('menuContainer');
   if (!container || !menuSections) return;
   container.innerHTML = '';
@@ -470,134 +1091,7 @@ function renderMenuSections(){
     const grid = document.createElement('div');
     grid.className = 'menu-grid';
     section.items.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'menu-card';
-      const imageWrapper = document.createElement('div');
-      imageWrapper.className = 'menu-card-image';
-      const img = document.createElement('img');
-      const imagePath = item.image || menuImageMap[item.title] || section.image || '';
-      img.src = encodeURI(imagePath);
-      img.alt = item.title;
-      // Ensure images in Новинки and the Фитнес донер are not dimmed
-      if (section.category === 'Новинки' || item.title === 'Фитнес донер'){
-        img.style.opacity = '1';
-        img.style.filter = 'none';
-      }
-      const badge = document.createElement('div');
-      badge.className = 'menu-card-badge';
-      badge.textContent = item.price;
-      imageWrapper.appendChild(img);
-      imageWrapper.appendChild(badge);
-      const content = document.createElement('div');
-      content.className = 'menu-card-content';
-      const title = document.createElement('h3');
-      title.className = 'menu-card-title';
-      // For wings, legs, and strips display both options in title
-      let displayTitle = item.title;
-      const hasSpicyOption = /крылышки|ножки|стрипсы/i.test(item.title);
-      if (hasSpicyOption){
-        displayTitle = item.title.replace(/острые?\s*/i,'').trim() + ' — Острые/Не острые';
-      }
-      title.textContent = displayTitle;
-      const desc = document.createElement('p');
-      desc.className = 'menu-card-desc';
-      desc.textContent = item.desc;
-      const price = document.createElement('div');
-      price.className = 'menu-card-price';
-      price.textContent = item.price;
-      // Create action area: either 'Выбрать' button or quantity controls
-      const actionArea = document.createElement('div');
-      actionArea.className = 'menu-card-action';
-
-      // Variant selector for wings, legs, and strips
-      let selectedVariant = hasSpicyOption ? 'spicy' : 'default';
-      const variantSelector = document.createElement('div');
-      variantSelector.className = 'variant-selector';
-      function renderVariantButtons(){
-        variantSelector.innerHTML = '';
-        const spicyBtn = document.createElement('button');
-        spicyBtn.className = 'btn-variant';
-        spicyBtn.textContent = 'Острые';
-        const normalBtn = document.createElement('button');
-        normalBtn.className = 'btn-variant';
-        normalBtn.textContent = 'Обычные';
-        function updateActive(){
-          spicyBtn.classList.toggle('active', selectedVariant === 'spicy');
-          normalBtn.classList.toggle('active', selectedVariant === 'normal');
-        }
-        spicyBtn.addEventListener('click', () => { selectedVariant = 'spicy'; updateActive(); renderActionByVariant(); });
-        normalBtn.addEventListener('click', () => { selectedVariant = 'normal'; updateActive(); renderActionByVariant(); });
-        variantSelector.appendChild(spicyBtn);
-        variantSelector.appendChild(normalBtn);
-        updateActive();
-      }
-
-      function createQtyControls(currentQty){
-        actionArea.innerHTML = '';
-        const minus = document.createElement('button');
-        minus.className = 'btn btn-qty';
-        minus.textContent = '-';
-        const count = document.createElement('span');
-        count.className = 'menu-card-count';
-        count.textContent = currentQty;
-        const plus = document.createElement('button');
-        plus.className = 'btn btn-qty';
-        plus.textContent = '+';
-
-        minus.addEventListener('click', () => {
-          changeCartQty(item.title, -1, selectedVariant);
-          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
-          if (it) createQtyControls(it.qty);
-          else renderActionByVariant();
-        });
-        plus.addEventListener('click', () => {
-          addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
-          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
-          createQtyControls(it.qty);
-        });
-
-        if (hasSpicyOption) actionArea.appendChild(variantSelector);
-        actionArea.appendChild(minus);
-        actionArea.appendChild(count);
-        actionArea.appendChild(plus);
-      }
-
-      function createChooseButton(){
-        actionArea.innerHTML = '';
-        const action = document.createElement('button');
-        action.type = 'button';
-        action.className = 'btn btn-select';
-        action.textContent = 'Выбрать';
-        action.addEventListener('click', () => {
-          addToCart({title: item.title, desc: item.desc, price: item.price, image: imagePath, variant: selectedVariant});
-          const it = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant) || {qty:1};
-          createQtyControls(it.qty);
-        });
-        if (hasSpicyOption) actionArea.appendChild(variantSelector);
-        actionArea.appendChild(action);
-      }
-
-      function renderActionByVariant(){
-        if (!hasSpicyOption){
-          const existing = cart.find(c => c.title === item.title);
-          if (existing && existing.qty > 0) createQtyControls(existing.qty);
-          else createChooseButton();
-          return;
-        }
-        const existing = cart.find(c => c.title === item.title && (c.variant || 'default') === selectedVariant);
-        if (existing && existing.qty > 0) createQtyControls(existing.qty);
-        else createChooseButton();
-      }
-
-      if (hasSpicyOption) renderVariantButtons();
-      renderActionByVariant();
-
-      content.appendChild(title);
-      content.appendChild(desc);
-      content.appendChild(price);
-      content.appendChild(actionArea);
-      card.appendChild(imageWrapper);
-      card.appendChild(content);
+      const card = createCardDOM(item);
       grid.appendChild(card);
     });
     sectionEl.appendChild(grid);
@@ -657,8 +1151,21 @@ function initFAQ(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ensure no leftover scroll-blocker remains
   document.body.classList.remove('no-scroll');
+  
+  loadCart();
+  loadUserSession();
+  updateCartCount();
+  updateProfileHeaderBtn();
+
+  if (document.getElementById('menuContainer')) {
+    renderMenuSections();
+    renderCart();
+  } else if (document.getElementById('popularDishesContainer')) {
+    renderPopularDishes();
+    renderCart();
+  }
+
   // Reviews handling on index.html
   const form = document.getElementById('reviewForm');
   if (form){
@@ -682,27 +1189,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initFAQ();
   }
 
-  // Render menu on menu.html
-  if (document.getElementById('menuContainer')) {
-    loadCart();
-    renderMenuSections();
-    renderCart();
-    updateCartCount();
+  // Cart modal controls
+  const cartIconBtn = document.getElementById('cartIconBtn');
+  const cartCloseBtn = document.getElementById('cartCloseBtn');
+  const cartModalOverlay = document.getElementById('cartModalOverlay');
+  const cartBackBtn = document.getElementById('cartBackBtn');
+  if (cartIconBtn) cartIconBtn.addEventListener('click', openCartModal);
+  if (cartCloseBtn) cartCloseBtn.addEventListener('click', closeCartModal);
+  if (cartModalOverlay) cartModalOverlay.addEventListener('click', closeCartModal);
+  if (cartBackBtn) cartBackBtn.addEventListener('click', closeCartModal);
 
-    // Cart modal controls
-    const cartIconBtn = document.getElementById('cartIconBtn');
-    const cartCloseBtn = document.getElementById('cartCloseBtn');
-    const cartModalOverlay = document.getElementById('cartModalOverlay');
-    const cartBackBtn = document.getElementById('cartBackBtn');
-    if (cartIconBtn) cartIconBtn.addEventListener('click', openCartModal);
-    if (cartCloseBtn) cartCloseBtn.addEventListener('click', closeCartModal);
-    if (cartModalOverlay) cartModalOverlay.addEventListener('click', closeCartModal);
-    if (cartBackBtn) cartBackBtn.addEventListener('click', closeCartModal);
-    // close cart on Escape and ensure no-scroll cleared
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') setCartOpen(false);
-    });
-  }
+  // Profile modal controls
+  const profileBtn = document.getElementById('profileBtn');
+  const profileCloseBtn = document.getElementById('profileCloseBtn');
+  const profileModalOverlay = document.getElementById('profileModalOverlay');
+  if (profileBtn) profileBtn.addEventListener('click', openProfileModal);
+  if (profileCloseBtn) profileCloseBtn.addEventListener('click', closeProfileModal);
+  if (profileModalOverlay) profileModalOverlay.addEventListener('click', closeProfileModal);
+
+  // Close modals on Escape and ensure no-scroll cleared
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      setCartOpen(false);
+      closeProfileModal();
+    }
+  });
 
   // Smooth scroll for anchor links
   document.querySelectorAll('a[href^="#"]').forEach(a => {
@@ -718,3 +1229,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+

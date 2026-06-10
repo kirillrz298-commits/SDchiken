@@ -21,7 +21,20 @@
       <a href="#order">Заказать</a>
       <a href="#reviews">Отзывы</a>
     </nav>
-    <div class="phone">+7 708 378 2484</div>
+    <div class="header-right">
+      <div class="phone">+7 708 378 2484</div>
+      <button id="cartIconBtn" class="cart-icon-btn">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span id="cartCount" class="cart-count-badge hidden">0</span>
+      </button>
+      <button id="profileBtn" class="profile-icon-btn">
+        <span>Войти</span>
+      </button>
+    </div>
   </header>
 
   <main>
@@ -66,32 +79,7 @@
 
     <section class="popular-dishes">
       <h2>⭐ Популярные блюда</h2>
-      <div class="dishes-grid">
-        <div class="dish-card">
-          <div class="dish-image"><img src="menu1/sd-burger.png" alt="SD Бургер"></div>
-          <h3>SD Бургер</h3>
-          <p>Хрустящая курица, помидор, огурец, чеддер</p>
-          <div class="dish-price">2 190 ₸</div>
-        </div>
-        <div class="dish-card">
-          <div class="dish-image"><img src="menu1/doner.png" alt="Донер"></div>
-          <h3>Донер</h3>
-          <p>Сочная курица со свежими овощами</p>
-          <div class="dish-price">1 890 ₸</div>
-        </div>
-        <div class="dish-card">
-          <div class="dish-image"><img src="menu1/wings.png" alt="Крылышки острые"></div>
-          <h3>Крылышки острые</h3>
-          <p>Хрустящие крылья с фирменным соусом</p>
-          <div class="dish-price">2 190 ₸</div>
-        </div>
-        <div class="dish-card">
-          <div class="dish-image"><img src="menu1/set-friends.png" alt="Сет Friends"></div>
-          <h3>Сет Friends</h3>
-          <p>4 бургера, крылья, фри, соусы, кола</p>
-          <div class="dish-price">10 990 ₸</div>
-        </div>
-      </div>
+      <div id="popularDishesContainer" class="menu-grid"></div>
     </section>
 
     <section class="faq">
@@ -161,6 +149,36 @@
     <div>Тел: +7 708 378 2484</div>
     <div>Время работы: 10:00 - 23:00</div>
   </footer>
+
+  <div id="cartModal" class="cart-modal hidden">
+    <div class="cart-modal-overlay" id="cartModalOverlay"></div>
+    <div class="cart-modal-panel">
+      <div class="cart-modal-header">
+        <div class="cart-modal-header-left">
+          <button id="cartBackBtn" class="btn btn-phone">Вернуться к покупкам</button>
+          <h2>Корзина</h2>
+        </div>
+        <button id="cartCloseBtn" class="cart-close-btn">✕</button>
+      </div>
+      <div class="cart-modal-body">
+        <div id="cartContent" class="cart-modal-content"></div>
+        <div id="cartCheckout" class="cart-checkout hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileModal" class="profile-modal hidden">
+    <div class="profile-modal-overlay" id="profileModalOverlay"></div>
+    <div class="profile-modal-panel">
+      <div class="profile-modal-header">
+        <div class="profile-modal-header-left">
+          <h2>Личный кабинет</h2>
+        </div>
+        <button id="profileCloseBtn" class="profile-close-btn">✕</button>
+      </div>
+      <div id="profileModalBody" class="profile-modal-body"></div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

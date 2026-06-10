@@ -19,14 +19,19 @@
     <nav class="nav">
       <a href="index.html">Вернуться на главную</a>
     </nav>
-    <button id="cartIconBtn" class="cart-icon-btn">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="9" cy="21" r="1"></circle>
-        <circle cx="20" cy="21" r="1"></circle>
-        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-      </svg>
-      <span id="cartCount" class="cart-count-badge hidden">0</span>
-    </button>
+    <div class="header-right">
+      <button id="cartIconBtn" class="cart-icon-btn">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span id="cartCount" class="cart-count-badge hidden">0</span>
+      </button>
+      <button id="profileBtn" class="profile-icon-btn">
+        <span>Войти</span>
+      </button>
+    </div>
   </header>
 
   <main>
@@ -63,6 +68,19 @@
         <div id="cartContent" class="cart-modal-content"></div>
         <div id="cartCheckout" class="cart-checkout hidden"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="profileModal" class="profile-modal hidden">
+    <div class="profile-modal-overlay" id="profileModalOverlay"></div>
+    <div class="profile-modal-panel">
+      <div class="profile-modal-header">
+        <div class="profile-modal-header-left">
+          <h2>Личный кабинет</h2>
+        </div>
+        <button id="profileCloseBtn" class="profile-close-btn">✕</button>
+      </div>
+      <div id="profileModalBody" class="profile-modal-body"></div>
     </div>
   </div>
 
