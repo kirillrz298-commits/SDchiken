@@ -10,7 +10,8 @@ const menuImageMap = {
   'Донер в багете': 'menu1/doner-baguette.png',
   'Донер Комбо': 'menu1/doner-combo.png',
   'Донер в багете Комбо': 'menu1/doner-baguette-combo.png',
-  'Фитнес донер': 'menu1/fitness-doner.png',
+  'Happy Hour': 'menu1/Happy Hour.jpg',
+  'FAMILY BOX': 'menu1/Family Box.jpg',
   'Сет Friends': 'menu1/set-friends.png',
   'Сет Chicken Mafia': 'menu1/set-chicken-mafia.png',
   'Крылышки острые — 6 шт': 'menu1/wings.png',
@@ -879,11 +880,6 @@ function createCardDOM(item) {
   img.src = encodeURI(imagePath);
   img.alt = item.title;
   
-  if (item.title === 'Фитнес донер') {
-    img.style.opacity = '1';
-    img.style.filter = 'none';
-  }
-  
   const badge = document.createElement('div');
   badge.className = 'menu-card-badge';
   badge.textContent = item.price;
@@ -1014,7 +1010,11 @@ function createCardDOM(item) {
   }
   
   if (hasSpicyOption) renderVariantButtons();
-  renderActionByVariant();
+  if (item.title === 'Happy Hour') {
+    actionArea.style.display = 'none';
+  } else {
+    renderActionByVariant();
+  }
   
   content.appendChild(title);
   content.appendChild(desc);

@@ -124,6 +124,7 @@ async function initDB() {
       // Сеты
       {title: 'Сет Friends', price: '10 990 ₸', desc: '4 классических бургера, 12 хрустящих крыльев, фри 4 шт, 4 соуса, кола 1 л', img: 'menu1/set-friends.png', cat: 'Сеты'},
       {title: 'Сет Chicken Mafia', price: '12 690 ₸', desc: '24 хрустящих крыла, 6 куриных ножек, 6 стрипсов, фри 3 шт, кола 1 л, 4 соуса', img: 'menu1/set-chicken-mafia.png', cat: 'Сеты'},
+      {title: 'FAMILY BOX', price: '14 990 ₸', desc: '💣 самый прибыльный: 4 бургера, 20 крыльев, 9 стрипсов, 4 фри, 4 соуса, cola 1.5л', img: 'menu1/Family Box.jpg', cat: 'Сеты'},
 
       // Закуски и крылья
       {title: 'Крылышки острые — 6 шт', price: '2 190 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
@@ -139,7 +140,7 @@ async function initDB() {
       {title: 'Стрипсы острые — 9 шт', price: '3 390 ₸', desc: 'Острые куриные стрипсы', img: 'menu1/strips.png', cat: 'Закуски и крылья'},
 
       // Новинки
-      {title: 'Фитнес донер', price: '2 500 ₸', desc: 'Много белка, мало жира, максимум вкуса', img: 'menu1/fitness-doner.png', cat: 'Новинки'}
+      {title: 'Happy Hour', price: 'Скидка -20%', desc: 'Вкусно есть – выгодно! Акция действует Пн, Вт, Ср с 15:00 до 18:00.', img: 'menu1/Happy Hour.jpg', cat: 'Новинки'}
     ];
 
     for (const prod of defaultProducts) {
