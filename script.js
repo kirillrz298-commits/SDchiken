@@ -1666,7 +1666,7 @@ function initAIChat() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
     // Call backend API
-    let replyText = 'извените я не могу ответить на вас вопрос напишите на номер +7 777 698 4098';
+    let replyText = 'извените я не могу ответить на вас вопрос напишите на номер +7 708 378 2484';
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
