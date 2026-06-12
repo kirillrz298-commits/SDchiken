@@ -60,6 +60,7 @@ app.post('/api/auth/register', async (req, res) => {
       name,
       phone,
       email,
+      role: 'user',
       orders: []
     };
 
@@ -112,6 +113,7 @@ app.post('/api/auth/login', async (req, res) => {
       name: user.name,
       phone: user.phone,
       email: user.email,
+      role: user.role,
       orders: orders
     };
 
@@ -280,6 +282,121 @@ app.post('/api/reviews', async (req, res) => {
   } catch (err) {
     console.error('Failed to save review:', err.message);
     res.status(500).json({ error: 'Failed to save review' });
+  }
+});
+
+// Admin verification middleware
+async function isAdmin(req, res, next) {
+  const userId = req.headers['x-user-id'];
+  if (!userId) {
+    return res.status(401).json({ error: 'Не авторизован' });
+  }
+  try {
+    const user = await query.get("SELECT role FROM users WHERE id = ?", [userId]);
+    if (user && user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Доступ запрещен' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+}
+
+// Admin API endpoints
+
+// GET /api/admin/users - Get all users
+app.get('/api/admin/users', isAdmin, async (req, res) => {
+  try {
+    const users = await query.all("SELECT id, name, phone, email, role, created_at FROM users ORDER BY id DESC");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/users/:id - Delete user
+app.delete('/api/admin/users/:id', isAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    if (String(userId) === String(req.headers['x-user-id'])) {
+      return res.status(400).json({ error: 'Нельзя удалить самого себя' });
+    }
+    await query.run("DELETE FROM users WHERE id = ?", [userId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/orders - Get all orders
+app.get('/api/admin/orders', isAdmin, async (req, res) => {
+  try {
+    const orders = await query.all("SELECT * FROM orders ORDER BY id DESC");
+    for (const order of orders) {
+      order.items = await query.all(
+        "SELECT product_title AS title, qty, price, variant FROM order_items WHERE order_id = ?",
+        [order.id]
+      );
+    }
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/orders/:id/status - Update order status
+app.post('/api/admin/orders/:id/status', isAdmin, async (req, res) => {
+  const { status } = req.body;
+  try {
+    await query.run("UPDATE orders SET status = ? WHERE id = ?", [status, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/products - Create product
+app.post('/api/admin/products', isAdmin, async (req, res) => {
+  const { title, description, price, image_path, category } = req.body;
+  if (!title || !price || !category) {
+    return res.status(400).json({ error: 'Название, цена и категория обязательны' });
+  }
+  try {
+    const result = await query.run(
+      "INSERT INTO products (title, description, price, image_path, category) VALUES (?, ?, ?, ?, ?)",
+      [title, description, price, image_path || '', category]
+    );
+    res.json({ success: true, productId: result.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/products/:id - Update product
+app.put('/api/admin/products/:id', isAdmin, async (req, res) => {
+  const { title, description, price, image_path, category } = req.body;
+  if (!title || !price || !category) {
+    return res.status(400).json({ error: 'Название, цена и категория обязательны' });
+  }
+  try {
+    await query.run(
+      "UPDATE products SET title = ?, description = ?, price = ?, image_path = ?, category = ? WHERE id = ?",
+      [title, description, price, image_path || '', category, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/products/:id - Delete product
+app.delete('/api/admin/products/:id', isAdmin, async (req, res) => {
+  try {
+    await query.run("DELETE FROM products WHERE id = ?", [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -42,6 +42,7 @@ async function fetchProductsFromDB() {
     // Group products by category
     const categoriesMap = {};
     products.forEach(p => {
+      if (p.title === 'Happy Hour') return;
       if (!categoriesMap[p.category]) {
         categoriesMap[p.category] = [];
       }
@@ -173,6 +174,20 @@ async function renderProfileView(viewState = 'login') {
       renderCart();
     });
     infoCard.appendChild(logoutBtn);
+
+    if (currentUser.role === 'admin') {
+      const adminBtn = document.createElement('button');
+      adminBtn.className = 'btn-history-toggle';
+      adminBtn.style.marginTop = '10px';
+      adminBtn.style.background = 'linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red-dark) 100%)';
+      adminBtn.style.color = '#fff';
+      adminBtn.textContent = 'Панель администратора';
+      adminBtn.addEventListener('click', () => {
+        renderAdminView();
+      });
+      infoCard.appendChild(adminBtn);
+    }
+
     container.appendChild(infoCard);
 
     // Order History Toggle Button
@@ -1202,3 +1217,364 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+
+async function renderAdminView() {
+  const body = document.getElementById('profileModalBody');
+  if (!body) return;
+  body.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'auth-container';
+
+  const headerRow = document.createElement('div');
+  headerRow.style.display = 'flex';
+  headerRow.style.justifyContent = 'space-between';
+  headerRow.style.alignItems = 'center';
+  headerRow.style.marginBottom = '20px';
+
+  const title = document.createElement('h3');
+  title.className = 'auth-title';
+  title.textContent = 'Панель администратора';
+  headerRow.appendChild(title);
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'btn btn-phone';
+  backBtn.textContent = 'Назад';
+  backBtn.addEventListener('click', () => {
+    renderProfileView();
+  });
+  headerRow.appendChild(backBtn);
+  container.appendChild(headerRow);
+
+  // Admin Navigation (Tabs)
+  const adminNav = document.createElement('div');
+  adminNav.className = 'admin-nav';
+
+  const tabOrders = document.createElement('button');
+  tabOrders.className = 'admin-nav-btn active';
+  tabOrders.textContent = 'Заказы';
+
+  const tabProducts = document.createElement('button');
+  tabProducts.className = 'admin-nav-btn';
+  tabProducts.textContent = 'Товары';
+
+  const tabUsers = document.createElement('button');
+  tabUsers.className = 'admin-nav-btn';
+  tabUsers.textContent = 'Пользователи';
+
+  adminNav.appendChild(tabOrders);
+  adminNav.appendChild(tabProducts);
+  adminNav.appendChild(tabUsers);
+  container.appendChild(adminNav);
+
+  // Content section
+  const adminContent = document.createElement('div');
+  adminContent.className = 'admin-section';
+  container.appendChild(adminContent);
+  body.appendChild(container);
+
+  // Active tab state
+  let activeTab = 'orders';
+
+  function switchTab(tab) {
+    activeTab = tab;
+    tabOrders.classList.toggle('active', tab === 'orders');
+    tabProducts.classList.toggle('active', tab === 'products');
+    tabUsers.classList.toggle('active', tab === 'users');
+    renderTabContent();
+  }
+
+  tabOrders.addEventListener('click', () => switchTab('orders'));
+  tabProducts.addEventListener('click', () => switchTab('products'));
+  tabUsers.addEventListener('click', () => switchTab('users'));
+
+  async function renderTabContent() {
+    adminContent.innerHTML = '<div class="order-history-empty">Загрузка...</div>';
+    if (!currentUser) return;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-user-id': currentUser.id
+    };
+
+    try {
+      if (activeTab === 'orders') {
+        const res = await fetch('/api/admin/orders', { headers });
+        if (!res.ok) throw new Error('Ошибка загрузки заказов');
+        const orders = await res.json();
+        adminContent.innerHTML = '';
+
+        if (orders.length === 0) {
+          adminContent.innerHTML = '<div class="order-history-empty">Заказов нет</div>';
+          return;
+        }
+
+        orders.forEach(order => {
+          const card = document.createElement('div');
+          card.className = 'admin-item-card';
+
+          const header = document.createElement('div');
+          header.className = 'admin-item-header';
+          header.innerHTML = `<span>Заказ #${order.id} - ${order.date}</span>`;
+          card.appendChild(header);
+
+          const info = document.createElement('div');
+          info.className = 'admin-item-body';
+          info.innerHTML = `
+            <strong>Клиент:</strong> ${escapeHtml(order.name)} (${escapeHtml(order.phone)})<br>
+            <strong>Адрес:</strong> ${escapeHtml(order.address)}<br>
+            ${order.comment ? `<strong>Комментарий:</strong> ${escapeHtml(order.comment)}<br>` : ''}
+            <strong>Сумма:</strong> ${order.total.toLocaleString('ru-RU')} ₸<br>
+            <strong>Содержимое:</strong><br>
+            ${order.items.map(it => `• ${it.title} x${it.qty} (${it.price})`).join('<br>')}
+          `;
+          card.appendChild(info);
+
+          // Status control row
+          const statusRow = document.createElement('div');
+          statusRow.style.display = 'flex';
+          statusRow.style.alignItems = 'center';
+          statusRow.style.gap = '10px';
+          statusRow.style.marginTop = '10px';
+
+          const statusLabel = document.createElement('span');
+          statusLabel.textContent = 'Статус: ';
+          statusLabel.style.fontWeight = '700';
+
+          const select = document.createElement('select');
+          select.className = 'admin-order-status-select';
+          const statuses = ['Принят', 'Готовится', 'В пути', 'Доставлен', 'Отменен'];
+          statuses.forEach(st => {
+            const opt = document.createElement('option');
+            opt.value = st;
+            opt.textContent = st;
+            opt.selected = (order.status === st);
+            select.appendChild(opt);
+          });
+
+          select.addEventListener('change', async () => {
+            const newStatus = select.value;
+            try {
+              const statusRes = await fetch(`/api/admin/orders/${order.id}/status`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ status: newStatus })
+              });
+              if (!statusRes.ok) throw new Error('Не удалось обновить статус');
+            } catch (err) {
+              alert(err.message);
+              select.value = order.status; // Revert
+            }
+          });
+
+          statusRow.appendChild(statusLabel);
+          statusRow.appendChild(select);
+          card.appendChild(statusRow);
+          adminContent.appendChild(card);
+        });
+
+      } else if (activeTab === 'users') {
+        const res = await fetch('/api/admin/users', { headers });
+        if (!res.ok) throw new Error('Ошибка загрузки пользователей');
+        const users = await res.json();
+        adminContent.innerHTML = '';
+
+        users.forEach(user => {
+          const card = document.createElement('div');
+          card.className = 'admin-item-card';
+
+          const header = document.createElement('div');
+          header.className = 'admin-item-header';
+          header.innerHTML = `<span>${escapeHtml(user.name)} (${user.role === 'admin' ? 'Админ' : 'Пользователь'})</span>`;
+          card.appendChild(header);
+
+          const info = document.createElement('div');
+          info.className = 'admin-item-body';
+          info.innerHTML = `
+            <strong>Телефон:</strong> ${escapeHtml(user.phone)}<br>
+            <strong>Email:</strong> ${escapeHtml(user.email)}
+          `;
+          card.appendChild(info);
+
+          if (user.role !== 'admin') {
+            const actions = document.createElement('div');
+            actions.className = 'admin-item-actions';
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'admin-btn admin-btn-delete';
+            delBtn.textContent = 'Удалить';
+            delBtn.addEventListener('click', async () => {
+              if (!confirm(`Вы действительно хотите удалить пользователя ${user.name}?`)) return;
+              try {
+                const delRes = await fetch(`/api/admin/users/${user.id}`, {
+                  method: 'DELETE',
+                  headers
+                });
+                if (!delRes.ok) throw new Error('Не удалось удалить пользователя');
+                renderTabContent();
+              } catch (err) {
+                alert(err.message);
+              }
+            });
+            actions.appendChild(delBtn);
+            card.appendChild(actions);
+          }
+
+          adminContent.appendChild(card);
+        });
+
+      } else if (activeTab === 'products') {
+        adminContent.innerHTML = '';
+
+        const addProdBtn = document.createElement('button');
+        addProdBtn.className = 'admin-btn-add';
+        addProdBtn.textContent = '+ Добавить новый товар';
+        addProdBtn.addEventListener('click', () => {
+          renderProductForm();
+        });
+        adminContent.appendChild(addProdBtn);
+
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('Ошибка загрузки товаров');
+        const products = await res.json();
+
+        products.forEach(prod => {
+          const card = document.createElement('div');
+          card.className = 'admin-item-card';
+
+          const header = document.createElement('div');
+          header.className = 'admin-item-header';
+          header.innerHTML = `<span>${escapeHtml(prod.title)}</span> <span style="color:var(--primary-red)">${escapeHtml(prod.price)}</span>`;
+          card.appendChild(header);
+
+          const info = document.createElement('div');
+          info.className = 'admin-item-body';
+          info.innerHTML = `
+            <strong>Категория:</strong> ${escapeHtml(prod.category)}<br>
+            <strong>Описание:</strong> ${escapeHtml(prod.description || 'Нет описания')}<br>
+            <strong>Путь к фото:</strong> ${escapeHtml(prod.image_path || 'Нет фото')}
+          `;
+          card.appendChild(info);
+
+          const actions = document.createElement('div');
+          actions.className = 'admin-item-actions';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'admin-btn admin-btn-edit';
+          editBtn.textContent = 'Изменить';
+          editBtn.addEventListener('click', () => {
+            renderProductForm(prod);
+          });
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'admin-btn admin-btn-delete';
+          delBtn.textContent = 'Удалить';
+          delBtn.addEventListener('click', async () => {
+            if (!confirm(`Удалить товар ${prod.title}?`)) return;
+            try {
+              const delRes = await fetch(`/api/admin/products/${prod.id}`, {
+                method: 'DELETE',
+                headers
+              });
+              if (!delRes.ok) throw new Error('Не удалось удалить товар');
+              await fetchProductsFromDB();
+              renderMenuSections();
+              renderTabContent();
+            } catch (err) {
+              alert(err.message);
+            }
+          });
+
+          actions.appendChild(editBtn);
+          actions.appendChild(delBtn);
+          card.appendChild(actions);
+
+          adminContent.appendChild(card);
+        });
+      }
+    } catch (err) {
+      adminContent.innerHTML = `<div class="order-history-empty" style="color:red">${err.message}</div>`;
+    }
+  }
+
+  function renderProductForm(product = null) {
+    adminContent.innerHTML = '';
+
+    const form = document.createElement('form');
+    form.className = 'admin-form';
+    form.innerHTML = `
+      <h3>${product ? 'Редактировать товар' : 'Добавить товар'}</h3>
+      <div class="admin-form-group">
+        <label for="prodTitle">Название товара</label>
+        <input type="text" id="prodTitle" required value="${product ? escapeHtml(product.title) : ''}">
+      </div>
+      <div class="admin-form-group">
+        <label for="prodCategory">Категория</label>
+        <select id="prodCategory" required>
+          <option value="Бургеры" ${product && product.category === 'Бургеры' ? 'selected' : ''}>Бургеры</option>
+          <option value="Донеры" ${product && product.category === 'Донеры' ? 'selected' : ''}>Донеры</option>
+          <option value="Сеты" ${product && product.category === 'Сеты' ? 'selected' : ''}>Сеты</option>
+          <option value="Закуски и крылья" ${product && product.category === 'Закуски и крылья' ? 'selected' : ''}>Закуски и крылья</option>
+          <option value="Новинки" ${product && product.category === 'Новинки' ? 'selected' : ''}>Новинки</option>
+        </select>
+      </div>
+      <div class="admin-form-group">
+        <label for="prodPrice">Цена (например, 2 190 ₸)</label>
+        <input type="text" id="prodPrice" required value="${product ? escapeHtml(product.price) : ''}">
+      </div>
+      <div class="admin-form-group">
+        <label for="prodDesc">Описание</label>
+        <textarea id="prodDesc" rows="3">${product && product.description ? escapeHtml(product.description) : ''}</textarea>
+      </div>
+      <div class="admin-form-group">
+        <label for="prodImage">Путь к изображению (например, menu1/wings.png)</label>
+        <input type="text" id="prodImage" value="${product && product.image_path ? escapeHtml(product.image_path) : ''}">
+      </div>
+      <div class="admin-form-actions">
+        <button type="submit" class="admin-btn admin-btn-edit" style="background:var(--primary-red);color:#fff">${product ? 'Сохранить' : 'Создать'}</button>
+        <button type="button" id="cancelProdForm" class="admin-btn admin-btn-delete">Отмена</button>
+      </div>
+    `;
+
+    form.querySelector('#cancelProdForm').addEventListener('click', () => {
+      renderTabContent();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = form.querySelector('#prodTitle').value.trim();
+      const category = form.querySelector('#prodCategory').value;
+      const price = form.querySelector('#prodPrice').value.trim();
+      const description = form.querySelector('#prodDesc').value.trim();
+      const image_path = form.querySelector('#prodImage').value.trim();
+
+      const bodyData = { title, category, price, description, image_path };
+      const url = product ? `/api/admin/products/${product.id}` : '/api/admin/products';
+      const method = product ? 'PUT' : 'POST';
+
+      try {
+        const saveRes = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': currentUser.id
+          },
+          body: JSON.stringify(bodyData)
+        });
+        if (!saveRes.ok) {
+          const errorData = await saveRes.json();
+          throw new Error(errorData.error || 'Не удалось сохранить товар');
+        }
+        await fetchProductsFromDB();
+        renderMenuSections();
+        renderTabContent();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    adminContent.appendChild(form);
+  }
+
+  renderTabContent();
+}

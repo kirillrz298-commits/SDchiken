@@ -48,9 +48,17 @@ async function initDB() {
       phone TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      role TEXT DEFAULT 'user',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Try to add role column to users table if it's an existing database
+  try {
+    await query.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+  } catch (err) {
+    // Column might already exist, ignore error
+  }
 
   // 2. Create Products table
   await query.run(`
@@ -102,6 +110,9 @@ async function initDB() {
     )
   `);
 
+  // Delete Happy Hour if exists in DB to migrate it
+  await query.run("DELETE FROM products WHERE title = 'Happy Hour'");
+
   // Seed default products if empty
   const countRow = await query.get("SELECT COUNT(*) AS count FROM products");
   if (countRow.count === 0) {
@@ -139,8 +150,6 @@ async function initDB() {
       {title: 'Фри', price: '990 ₸', desc: 'Хрустящий картофель фри', img: 'menu1/french-fries.png', cat: 'Закуски и крылья'},
       {title: 'Стрипсы острые — 9 шт', price: '3 390 ₸', desc: 'Острые куриные стрипсы', img: 'menu1/strips.png', cat: 'Закуски и крылья'},
 
-      // Новинки
-      {title: 'Happy Hour', price: 'Скидка -20%', desc: 'Вкусно есть – выгодно! Акция действует Пн, Вт, Ср с 15:00 до 18:00.', img: 'menu1/Happy Hour.jpg', cat: 'Новинки'}
     ];
 
     for (const prod of defaultProducts) {
@@ -150,6 +159,23 @@ async function initDB() {
       );
     }
     console.log('Seeding products finished.');
+  }
+
+  // Create admin user if it doesn't exist
+  const adminEmail = 'admin@sdchicken.kz';
+  const adminPhone = '+77000000000';
+  const adminName = 'Администратор';
+  const adminPassword = 'admin'; // Plain password "admin"
+
+  const adminExists = await query.get("SELECT id FROM users WHERE email = ?", [adminEmail]);
+  if (!adminExists) {
+    const { hashPassword } = require('./auth');
+    const adminPassHash = hashPassword(adminPassword);
+    await query.run(
+      "INSERT INTO users (name, phone, email, password_hash, role) VALUES (?, ?, ?, ?, ?)",
+      [adminName, adminPhone, adminEmail, adminPassHash, 'admin']
+    );
+    console.log('Seeded Admin account successfully.');
   }
 }
 
