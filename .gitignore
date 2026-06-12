@@ -25,3 +25,13 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Database file
+database.db
+
+# Environment variables
+.env
+
+# Scratch scripts
+scratch/
+

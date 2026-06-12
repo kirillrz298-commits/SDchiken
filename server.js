@@ -1,8 +1,23 @@
 const express = require('express');
 const path = require('path');
 const https = require('https');
+const fs = require('fs');
 const { query } = require('./database');
 const { hashPassword, verifyPassword } = require('./auth');
+
+// Load environment variables from .env file if it exists
+if (fs.existsSync('.env')) {
+  fs.readFileSync('.env', 'utf8').split('\n').forEach(line => {
+    const parts = line.split('=');
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const val = parts.slice(1).join('=').trim();
+      if (key && !key.startsWith('#')) {
+        process.env[key] = val;
+      }
+    }
+  });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -397,6 +412,123 @@ app.delete('/api/admin/products/:id', isAdmin, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper function for https POST
+function httpsPost(url, payload) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const data = JSON.stringify(payload);
+
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: 443,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => {
+        responseBody += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(responseBody));
+          } catch (e) {
+            reject(new Error('Invalid JSON response'));
+          }
+        } else {
+          reject(new Error(`HTTP Error ${res.statusCode}: ${responseBody}`));
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+// POST /api/chat - AI assistant chat matching endpoint
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'Сообщение обязательно' });
+  }
+
+  const fallbackMsg = 'извените я не могу ответить на вас вопрос напишите на номер +7 777 698 4098';
+
+  try {
+    // 1. Fetch live products from DB
+    const products = await query.all("SELECT title, price, description, category FROM products");
+
+    // 2. Prepare system instructions
+    const systemInstruction = `Ты — ИИ-помощник ресторана быстрого питания "SD Chicken".
+Твой единственный функционал и цель — помогать пользователям в подборе товаров из меню нашего ресторана и отвечать на вопросы, касающиеся рекомендаций блюд.
+Если пользователь просит посоветовать сытный обед, перекус, комбо, бургеры или донеры, порекомендуй товары из нашего каталога.
+Вот наше актуальное меню (с ценами и описанием):
+${JSON.stringify(products)}
+
+Правила общения:
+1. Отвечай ТОЛЬКО на вопросы, касающиеся подбора товаров, цен, меню, рекомендаций блюд и работы ресторана SD Chicken.
+2. Если пользователь задает вопрос на отвлеченную тему (не относящуюся к подбору товаров, рекомендациям еды или нашему ресторану), или если ты не знаешь ответа, ты должен строго и дословно ответить следующей фразой без каких-либо изменений или дополнений: "извените я не могу ответить на вас вопрос напишите на номер +7 777 698 4098".
+3. Пиши кратко, дружелюбно, на русском языке и используй эмодзи для блюд.`;
+
+    const API_KEY = process.env.GEMINI_API_KEY || '';
+    if (!API_KEY) {
+      console.error('Error: GEMINI_API_KEY is not defined in process.env or .env file');
+      return res.json({ reply: fallbackMsg });
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+    const payload = {
+      systemInstruction: {
+        parts: [
+          {
+            text: systemInstruction
+          }
+        ]
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: message
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        maxOutputTokens: 500,
+        temperature: 0.2
+      }
+    };
+
+    const data = await httpsPost(url, payload);
+    let reply = '';
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+      reply = data.candidates[0].content.parts[0].text.trim();
+    }
+
+    if (!reply) {
+      reply = fallbackMsg;
+    }
+
+    res.json({ reply });
+  } catch (err) {
+    console.error('Chat endpoint failed:', err.message);
+    res.json({ reply: fallbackMsg });
   }
 });
 

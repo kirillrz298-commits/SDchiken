@@ -1216,6 +1216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   });
+  initAIChat();
 });
 
 async function renderAdminView() {
@@ -1577,4 +1578,125 @@ async function renderAdminView() {
   }
 
   renderTabContent();
+}
+
+function initAIChat() {
+  // 1. Create floating chat button
+  const chatBtn = document.createElement('button');
+  chatBtn.className = 'ai-chat-btn';
+  chatBtn.id = 'aiChatBtn';
+  chatBtn.title = 'ИИ-Помощник';
+  chatBtn.innerHTML = `
+    <svg viewBox="0 0 24 24">
+      <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+    </svg>
+  `;
+  document.body.appendChild(chatBtn);
+
+  // 2. Create chat window
+  const chatWindow = document.createElement('div');
+  chatWindow.className = 'ai-chat-window hidden';
+  chatWindow.id = 'aiChatWindow';
+  chatWindow.innerHTML = `
+    <div class="ai-chat-header">
+      <div class="ai-chat-header-info">
+        <div class="ai-chat-title">ИИ-Помощник SD Chicken</div>
+        <div class="ai-chat-status">В сети</div>
+      </div>
+      <button class="ai-chat-close" id="aiChatClose">✕</button>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <div class="ai-chat-msg bot">Привет! 🍗 Я ваш умный ИИ-помощник ресторана *SD Chicken*.\n\nЯ помогу вам с подбором блюд и рекомендациями из нашего меню! Спросите меня, например:\n«Что лучше взять на сытный обед?» или «Посоветуй острый бургер».</div>
+    </div>
+    <div class="ai-chat-input-area">
+      <input type="text" class="ai-chat-input" id="aiChatInput" placeholder="Спросите у ИИ о меню...">
+      <button class="ai-chat-send" id="aiChatSend">
+        <svg viewBox="0 0 24 24">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(chatWindow);
+
+  const messagesContainer = chatWindow.querySelector('#aiChatMessages');
+  const chatInput = chatWindow.querySelector('#aiChatInput');
+  const chatSend = chatWindow.querySelector('#aiChatSend');
+  const chatClose = chatWindow.querySelector('#aiChatClose');
+
+  // Open/Close toggle
+  chatBtn.addEventListener('click', () => {
+    chatWindow.classList.toggle('hidden');
+    if (!chatWindow.classList.contains('hidden')) {
+      chatInput.focus();
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  });
+
+  chatClose.addEventListener('click', () => {
+    chatWindow.classList.add('hidden');
+  });
+
+  // Esc closes chat too
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      chatWindow.classList.add('hidden');
+    }
+  });
+
+  // Sending message function
+  async function sendMessage() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    chatInput.value = '';
+
+    // Append user message
+    const userMsg = document.createElement('div');
+    userMsg.className = 'ai-chat-msg user';
+    userMsg.textContent = text;
+    messagesContainer.appendChild(userMsg);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Append typing indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'ai-chat-typing';
+    typingIndicator.innerHTML = '<span>ИИ думает</span><span class="blinking-dots">...</span>';
+    messagesContainer.appendChild(typingIndicator);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Call backend API
+    let replyText = 'извените я не могу ответить на вас вопрос напишите на номер +7 777 698 4098';
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: text })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        replyText = data.reply || replyText;
+      }
+    } catch (err) {
+      console.error('AI chat failed:', err);
+    }
+
+    // Remove typing indicator and append bot reply
+    messagesContainer.removeChild(typingIndicator);
+
+    const botMsg = document.createElement('div');
+    botMsg.className = 'ai-chat-msg bot';
+    botMsg.innerHTML = replyText.replace(/\*(.*?)\*/g, '<strong>$1</strong>'); // Simple bold markdown support
+    messagesContainer.appendChild(botMsg);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  chatSend.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
 }
