@@ -110,56 +110,51 @@ async function initDB() {
     )
   `);
 
-  // Delete Happy Hour if exists in DB to migrate it
-  await query.run("DELETE FROM products WHERE title = 'Happy Hour'");
+  // Очистим таблицу товаров для полного пересоздания структуры и данных
+  console.log('Очистка и полное обновление каталога товаров в БД...');
+  await query.run("DELETE FROM products");
 
-  // Seed default products if empty
-  const countRow = await query.get("SELECT COUNT(*) AS count FROM products");
-  if (countRow.count === 0) {
-    console.log('Seeding products table with initial menu...');
-    const defaultProducts = [
-      // Бургеры
-      {title: 'SD Бургер', price: '2 190 ₸', desc: 'Хрустящая курица, помидор, соленый огурец, сыр чеддер, соус', img: 'menu1/sd-burger.png', cat: 'Бургеры'},
-      {title: 'Классический бургер', price: '2 000 ₸', desc: 'Хрустящая курица, сыр чеддер, айсберг, соус', img: 'menu1/classic-burger.png', cat: 'Бургеры'},
-      {title: 'Острый бургер', price: '2 290 ₸', desc: 'Хрустящая курица, айсберг, помидор, сыр чеддер, соус', img: 'menu1/spicy-burger.png', cat: 'Бургеры'},
-      {title: 'SD Бургер Комбо', price: '3 190 ₸', desc: 'SD Бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/sd-burger-combo.png', cat: 'Бургеры'},
-      {title: 'Классический бургер Комбо', price: '3 000 ₸', desc: 'Классический бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/classic-burger-combo.png', cat: 'Бургеры'},
-      {title: 'Острый бургер Комбо', price: '3 290 ₸', desc: 'Острый бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/spicy-burger-combo.png', cat: 'Бургеры'},
-      
-      // Донеры
-      {title: 'Донер', price: '1 890 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус', img: 'menu1/doner.png', cat: 'Донеры'},
-      {title: 'Донер в багете', price: '2 100 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус', img: 'menu1/doner-baguette.png', cat: 'Донеры'},
-      {title: 'Донер Комбо', price: '2 890 ₸', desc: 'Донер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/doner-combo.png', cat: 'Донеры'},
-      {title: 'Донер в багете Комбо', price: '3 190 ₸', desc: 'Донер в багете, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/doner-baguette-combo.png', cat: 'Донеры'},
+  const defaultProducts = [
+    // Бургеры
+    {title: 'SD Бургер', price: '2 190 ₸', desc: 'Хрустящая курица, помидор, соленый огурец, сыр чеддер, соус', img: 'menu1/sd-burger.png', cat: 'Бургеры'},
+    {title: 'Классический бургер', price: '2 000 ₸', desc: 'Хрустящая курица, сыр чеддер, айсберг, соус', img: 'menu1/classic-burger.png', cat: 'Бургеры'},
+    {title: 'Острый бургер', price: '2 290 ₸', desc: 'Хрустящая курица, айсберг, помидор, сыр чеддер, соус', img: 'menu1/spicy-burger.png', cat: 'Бургеры'},
+    {title: 'SD Бургер Комбо', price: '3 190 ₸', desc: 'SD Бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/sd-burger-combo.png', cat: 'Бургеры'},
+    {title: 'Классический бургер Комбо', price: '3 000 ₸', desc: 'Классический бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/classic-burger-combo.png', cat: 'Бургеры'},
+    {title: 'Острый бургер Комбо', price: '3 290 ₸', desc: 'Острый бургер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/spicy-burger-combo.png', cat: 'Бургеры'},
+    
+    // Донеры
+    {title: 'Донер', price: '1 890 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус', img: 'menu1/doner.png', cat: 'Донеры'},
+    {title: 'Донер в багете', price: '2 100 ₸', desc: 'Хрустящая курица, свежие овощи, соленый огурец, соус', img: 'menu1/doner-baguette.png', cat: 'Донеры'},
+    {title: 'Донер Комбо', price: '2 890 ₸', desc: 'Донер, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/doner-combo.png', cat: 'Донеры'},
+    {title: 'Донер в багете Комбо', price: '3 190 ₸', desc: 'Донер в багете, картофель фри, кола 0,5 л, соус на выбор', img: 'menu1/doner-baguette-combo.png', cat: 'Донеры'},
 
-      // Сеты
-      {title: 'Сет Friends', price: '10 990 ₸', desc: '4 классических бургера, 12 хрустящих крыльев, фри 4 шт, 4 соуса, кола 1 л', img: 'menu1/set-friends.png', cat: 'Сеты'},
-      {title: 'Сет Chicken Mafia', price: '12 690 ₸', desc: '24 хрустящих крыла, 6 куриных ножек, 6 стрипсов, фри 3 шт, кола 1 л, 4 соуса', img: 'menu1/set-chicken-mafia.png', cat: 'Сеты'},
-      {title: 'FAMILY BOX', price: '14 990 ₸', desc: '💣 самый прибыльный: 4 бургера, 20 крыльев, 9 стрипсов, 4 фри, 4 соуса, cola 1.5л', img: 'menu1/Family Box.jpg', cat: 'Сеты'},
+    // Сеты
+    {title: 'Сет Friends', price: '10 990 ₸', desc: '4 классических бургера, 12 хрустящих крыльев, фри 4 шт, 4 соуса, кола 1 л', img: 'menu1/set-friends.png', cat: 'Сеты'},
+    {title: 'Сет Chicken Mafia', price: '12 690 ₸', desc: '24 хрустящих крыла, 6 куриных ножек, 6 стрипсов, фри 3 шт, кола 1 л, 4 соуса', img: 'menu1/set-chicken-mafia.png', cat: 'Сеты'},
+    {title: 'FAMILY BOX', price: '14 990 ₸', desc: '💣 самый прибыльный: 4 бургера, 20 крыльев, 9 стрипсов, 4 фри, 4 соуса, cola 1.5л', img: 'menu1/Family Box.jpg', cat: 'Сеты'},
 
-      // Закуски и крылья
-      {title: 'Крылышки острые — 6 шт', price: '2 190 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
-      {title: 'Крылышки острые — 12 шт', price: '3 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
-      {title: 'Крылышки острые — 20 шт', price: '5 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
-      {title: 'Крылышки острые — 30 шт', price: '7 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
-      {title: 'Крылышки острые — 40 шт', price: '9 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
-      {title: 'Куриные ножки острые — 3 шт', price: '2 690 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
-      {title: 'Куриные ножки острые — 6 шт', price: '5 090 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
-      {title: 'Куриные ножки острые — 9 шт', price: '7 490 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
-      {title: 'Наггетсы классические — 9 шт', price: '1 990 ₸', desc: 'Классические куриные наггетсы', img: 'menu1/nuggets.png', cat: 'Закуски и крылья'},
-      {title: 'Фри', price: '990 ₸', desc: 'Хрустящий картофель фри', img: 'menu1/french-fries.png', cat: 'Закуски и крылья'},
-      {title: 'Стрипсы острые — 9 шт', price: '3 390 ₸', desc: 'Острые куриные стрипсы', img: 'menu1/strips.png', cat: 'Закуски и крылья'},
+    // Закуски и крылья
+    {title: 'Крылышки острые — 6 шт', price: '2 190 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
+    {title: 'Крылышки острые — 12 шт', price: '3 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
+    {title: 'Крылышки острые — 20 шт', price: '5 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
+    {title: 'Крылышки острые — 30 шт', price: '7 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
+    {title: 'Крылышки острые — 40 шт', price: '9 990 ₸', desc: 'Острые крылышки с фирменным соусом', img: 'menu1/wings.png', cat: 'Закуски и крылья'},
+    {title: 'Куриные ножки острые — 3 шт', price: '2 690 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
+    {title: 'Куриные ножки острые — 6 шт', price: '5 090 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
+    {title: 'Куриные ножки острые — 9 шт', price: '7 490 ₸', desc: 'Острые куриные ножки с сильным вкусом', img: 'menu1/chicken-legs.png', cat: 'Закуски и крылья'},
+    {title: 'Наггетсы классические — 9 шт', price: '1 990 ₸', desc: 'Классические куриные наггетсы', img: 'menu1/nuggets.png', cat: 'Закуски и крылья'},
+    {title: 'Фри', price: '990 ₸', desc: 'Хрустящий картофель фри', img: 'menu1/french-fries.png', cat: 'Закуски и крылья'},
+    {title: 'Стрипсы острые — 9 шт', price: '3 390 ₸', desc: 'Острые куриные стрипсы', img: 'menu1/strips.png', cat: 'Закуски и крылья'},
+  ];
 
-    ];
-
-    for (const prod of defaultProducts) {
-      await query.run(
-        "INSERT OR IGNORE INTO products (title, price, description, image_path, category) VALUES (?, ?, ?, ?, ?)",
-        [prod.title, prod.price, prod.desc, prod.img, prod.cat]
-      );
-    }
-    console.log('Seeding products finished.');
+  for (const prod of defaultProducts) {
+    await query.run(
+      "INSERT OR IGNORE INTO products (title, price, description, image_path, category) VALUES (?, ?, ?, ?, ?)",
+      [prod.title, prod.price, prod.desc, prod.img, prod.cat]
+    );
   }
+  console.log('Синхронизация каталога товаров завершена.');
 
   // Create admin user if it doesn't exist
   const adminEmail = 'admin@sdchicken.kz';
