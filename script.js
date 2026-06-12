@@ -484,8 +484,7 @@ function saveCart(){
 }
 
 let checkout = {
-  payment: 'cash',
-  useBonus: false
+  payment: 'cash'
 };
 
 function updateCartCount(){
@@ -520,9 +519,7 @@ function setCartOpen(isOpen){
   }
 }
 
-function getBonusAmount(total){
-  return Math.ceil(total * 0.05);
-}
+
 
 function createCheckoutInput({labelText, id, placeholder, type = 'text'}){
   const field = document.createElement('div');
@@ -599,28 +596,7 @@ function renderCheckout(total){
   commentField.appendChild(commentTextarea);
   checkoutEl.appendChild(commentField);
 
-  const bonusRow = document.createElement('div');
-  bonusRow.className = 'checkout-bonus-row';
-  const bonusInfo = document.createElement('div');
-  bonusInfo.textContent = `Бонусы начисляются после заказа: ${getBonusAmount(total)} бонусов`;
-  const bonusOption = document.createElement('label');
-  bonusOption.className = 'checkout-bonus-label';
-  const bonusCheckbox = document.createElement('input');
-  bonusCheckbox.type = 'checkbox';
-  bonusCheckbox.checked = checkout.useBonus;
-  bonusCheckbox.addEventListener('change', () => {
-    checkout.useBonus = bonusCheckbox.checked;
-    bonusStatus.textContent = bonusCheckbox.checked ? 'Бонусы будут списаны' : 'Бонусы не списываются';
-  });
-  const bonusStatus = document.createElement('span');
-  bonusStatus.className = 'checkout-bonus-status';
-  bonusStatus.textContent = checkout.useBonus ? 'Бонусы будут списаны' : 'Бонусы не списываются';
-  bonusOption.appendChild(bonusCheckbox);
-  bonusOption.appendChild(document.createTextNode(' Списать бонусы'));
-  bonusRow.appendChild(bonusInfo);
-  bonusRow.appendChild(bonusOption);
-  bonusRow.appendChild(bonusStatus);
-  checkoutEl.appendChild(bonusRow);
+
 
   const orderButton = document.createElement('button');
   orderButton.type = 'button';
@@ -677,11 +653,22 @@ function renderCheckout(total){
       totalQty += item.qty;
     });
 
+    const now = new Date();
+    const dateTimeStr = now.toLocaleString('ru-RU', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
     const orderMsg = `🍗 *Новый заказ в SD Chicken* 🍗\n\n` +
-      `📞 *Номер заказчика:* ${phone}\n` +
+      `1️⃣ *Дата и время:* ${dateTimeStr}\n` +
+      `2️⃣ *Номер телефона:* ${phone}\n` +
       `👤 *Имя:* ${name}\n` +
-      `📍 *Адрес:* ул. ${street}, д. ${house}${floor ? ', эт. ' + floor : ''}${apartment ? ', кв. ' + apartment : ''}\n\n` +
-      `📦 *Заказ:* \n${itemsText}\n` +
+      `3️⃣ *Адрес:* ул. ${street}, д. ${house}${floor ? ', эт. ' + floor : ''}${apartment ? ', кв. ' + apartment : ''}\n\n` +
+      `4️⃣ *Что именно заказали:* \n${itemsText}\n` +
       `🔢 *Количество блюд:* ${totalQty} шт.\n` +
       `💰 *Сумма заказа:* ${total.toLocaleString('ru-RU')} ₸\n` +
       (comment ? `💬 *Комментарий:* ${comment}` : '');

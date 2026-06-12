@@ -1193,33 +1193,6 @@ body {
   font-weight: 600;
 }
 
-.checkout-bonus-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 16px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  margin-bottom: 18px;
-}
-
-.checkout-bonus-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--white);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.checkout-bonus-status {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 .btn-order {
   display: inline-flex;
   align-items: center;
